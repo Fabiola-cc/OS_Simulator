@@ -1,3 +1,5 @@
 QT += widgets
 
-SOURCES += main.cpp
+HEADERS += client.h
+
+SOURCES += client.cpp
