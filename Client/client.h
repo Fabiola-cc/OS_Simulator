@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QLineEdit>
+#include "structures.cpp"
 
 class SimulatorClient : public QWidget {
     Q_OBJECT
@@ -18,8 +19,17 @@ public slots:
     void onSyncClicked();
     void onCheckBoxMarked();
     void onReturnClicked();
+    void onAddFileClicked_Process();
+    void onAddFileClicked_Resources();
+    void onAddFileClicked_Actions();
 
 private:
+    // General
+    QList<QString> schedulingTypesToUse;
+    QList<Process> processList;
+    QList<Resource> resources;
+    QList<Action> actions;
+
     // Labels
     QLabel *welcomeLabel;
     QLabel *chooseLabel;

@@ -1,4 +1,5 @@
 #include "client.h"
+#include "structures.cpp"
 #include <QApplication>
 #include <QPushButton>
 #include <QFileDialog>
@@ -151,6 +152,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
+    connect(addFileButton, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
 }
 
 // lógica cuando el botón "Calendarización" es presionado
@@ -189,6 +191,103 @@ void SimulatorClient::onReturnClicked() {
 void SimulatorClient::onCheckBoxMarked() {
 }
 
+void SimulatorClient::onAddFileClicked_Process() {
+    // Abrir diálogo para seleccionar archivo
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de procesos",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Process p;
+                    p.pid = fields[0].trimmed();
+                    p.burstTime = fields[1].trimmed().toInt();
+                    p.arrivalTime = fields[2].trimmed().toInt();
+                    p.priority = fields[3].trimmed().toInt();
+
+                    processList.append(p);
+                }
+            }
+            file.close();
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
+void SimulatorClient::onAddFileClicked_Actions() {
+    // Abrir diálogo para seleccionar archivo
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de procesos",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Action a;
+                    a.pid = fields[0].trimmed();
+                    a.operation = fields[1].trimmed();
+                    a.resource = fields[2].trimmed();
+                    a.cycle = fields[3].trimmed().toInt();
+                    actions.append(a);
+                }
+            }
+            file.close();    
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
+void SimulatorClient::onAddFileClicked_Resources() {
+    // Abrir diálogo para seleccionar archivo
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de procesos",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 2) {
+                    Resource r;
+                    r.name = fields[0].trimmed();
+                    r.counter = fields[1].trimmed().toInt();
+                    resources.append(r);
+                }
+            }
+            file.close();
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
 
 /**
  * @brief Punto de entrada principal de la aplicación
