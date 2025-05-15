@@ -1,5 +1,4 @@
 #include "client.h"
-#include "structures.cpp"
 #include <QApplication>
 #include <QPushButton>
 #include <QFileDialog>
@@ -43,6 +42,13 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     ///////////////////////////////////////////////////////////////////
 
+    processListLabel = new QLabel(this);
+    processListLabel->setAlignment(Qt::AlignLeft);
+    mainLayout->addWidget(processListLabel);
+    processListLabel->hide(); // ocultarlo al inicio
+
+    ///////////////////////////////////////////////////////////////////
+
     // Elementos y diseño de pantalla de CALENDARIZACIÓN
     // Crear contenedor
     scheduleOptionsWidget = new QWidget(this);
@@ -74,6 +80,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     // Botones
     addFileButton = new QPushButton("Añadir Archivo", this);
+    schedulingSimButton = new QPushButton("Iniciar Simulación", this);
     returnButton = new QPushButton("Regresar", this);
 
     // Agregar widgets al layout
@@ -95,9 +102,15 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     QHBoxLayout *buttonLayout2 = new QHBoxLayout();
     buttonLayout2->addStretch();
     buttonLayout2->addWidget(addFileButton);
+    buttonLayout2->addWidget(schedulingSimButton);
     buttonLayout2->addWidget(returnButton);
     buttonLayout2->addStretch();
     scheduleLayout->addLayout(buttonLayout2);
+
+    openFileLabel = new QLabel(this);
+    openFileLabel->setAlignment(Qt::AlignCenter);
+    openFileLabel->hide();
+    scheduleLayout->addWidget(openFileLabel);
 
     // Agregar el contenedor al layout principal
     mainLayout->addWidget(scheduleOptionsWidget);
@@ -144,15 +157,29 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     syncOptionsWidget->hide();
     
     ///////////////////////////////////////////////////////////////////
+
+    // TEMPORAL, MIENTRAS HACEMOS LA SIMULACIÓN :)
+    processListLabel = new QLabel(this);
+    processListLabel->setAlignment(Qt::AlignLeft); // o Qt::AlignCenter
+    mainLayout->addWidget(processListLabel);
+    processListLabel->hide(); // si quieres ocultarlo al inicio
+
+    ///////////////////////////////////////////////////////////////////
     
     setLayout(mainLayout);
 
     // Configuración de conexiones entre señales y slots
     connect(scheduleButton, &QPushButton::clicked, this, &SimulatorClient::onScheduleClicked);   // Conectar al hacer clic
-    connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
+    connect(schedulingSimButton, &QPushButton::clicked, this, &SimulatorClient::onSchedulingSimClicked);
     connect(returnButton, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
-    connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     connect(addFileButton, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
+
+    connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
+    connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
+    //// AÑADIR CONNECTS A SUS BOTONES PARA LEER ARCHIVOS :)
+    // connect(BOTON SIMULACION PROCESO, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
+    // connect(BOTON SIMULACION ACTIVIDAD, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Actions);
+    // connect(BOTON SIMULACION RECURSOS, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Resources);
 }
 
 // lógica cuando el botón "Calendarización" es presionado
@@ -189,6 +216,30 @@ void SimulatorClient::onReturnClicked() {
 }
 
 void SimulatorClient::onCheckBoxMarked() {
+    if (fcfsCheckBox->isChecked()) schedulingTypesToUse.append("First In First Out");
+    if (sjfCheckBox->isChecked()) schedulingTypesToUse.append("Shortest Job First");
+    if (srtCheckBox->isChecked()) schedulingTypesToUse.append("Shortest Remaining Time");
+    if (rrCheckBox->isChecked()) schedulingTypesToUse.append("Round Robin");
+    if (priorityCheckBox->isChecked()) schedulingTypesToUse.append("Priority");
+}
+
+void SimulatorClient::onSchedulingSimClicked() {
+    onCheckBoxMarked();
+    scheduleOptionsWidget->hide();
+
+    // SEÑAL DE FUNCIONAMIENTO
+    QString displayText;
+    displayText += "Scheduling Types selected\n";
+    for (const QString &st : schedulingTypesToUse) {
+        displayText += st + "\n";
+    }
+
+    displayText += "\nProcess ID's\n";
+    for (const Process &p : processList) {
+        displayText += p.pid + "\n";
+    }
+    processListLabel->setText(displayText);
+    processListLabel->show(); 
 }
 
 void SimulatorClient::onAddFileClicked_Process() {
@@ -203,6 +254,9 @@ void SimulatorClient::onAddFileClicked_Process() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            openFileLabel->setText("Usando el archivo: " + fileName);
+            openFileLabel->show();
+
             QTextStream in(&file);
             while (!in.atEnd()) {
                 QString line = in.readLine();

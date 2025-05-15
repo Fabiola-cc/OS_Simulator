@@ -19,6 +19,7 @@ public slots:
     void onSyncClicked();
     void onCheckBoxMarked();
     void onReturnClicked();
+    void onSchedulingSimClicked();
     void onAddFileClicked_Process();
     void onAddFileClicked_Resources();
     void onAddFileClicked_Actions();
@@ -37,11 +38,14 @@ private:
     QLabel *instrLabel1;
     QLabel *titleLabel2;
     QLabel *instrLabel2;
+    QLabel *openFileLabel;
+    QLabel *processListLabel; // Temporal
 
     // Buttons
     QPushButton *scheduleButton;
     QPushButton *syncButton;
     QPushButton *addFileButton;
+    QPushButton *schedulingSimButton;
     QPushButton *returnButton;
     QPushButton *returnButton2;
     QPushButton *mutexButton;
