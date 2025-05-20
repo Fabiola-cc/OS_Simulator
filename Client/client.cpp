@@ -43,13 +43,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     ///////////////////////////////////////////////////////////////////
 
-    processListLabel = new QLabel(this);
-    processListLabel->setAlignment(Qt::AlignLeft);
-    mainLayout->addWidget(processListLabel);
-    processListLabel->hide(); // ocultarlo al inicio
-
-    ///////////////////////////////////////////////////////////////////
-
     // Elementos y diseño de pantalla de CALENDARIZACIÓN
     // Crear contenedor
     scheduleOptionsWidget = new QWidget(this);
@@ -178,7 +171,12 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     
-    // Inicilizar el schedyler de RoundRobin
+    // Inicilizar el scheduler de First in First Out
+    fifoScheduler = new FiFoScheduler(this);
+    connect(fifoScheduler, &FiFoScheduler::simulationFinished, 
+            this, &SimulatorClient::onRRFinished);
+
+    // Inicilizar el scheduler de RoundRobin
     rrScheduler = new RoundRobinScheduler(this);
     connect(rrScheduler, &RoundRobinScheduler::simulationFinished, 
             this, &SimulatorClient::onRRFinished);
@@ -287,6 +285,8 @@ void SimulatorClient::onSchedulingSimClicked() {
         runPrioritySimulation();
     } else if (schedulingTypesToUse.contains("Round Robin")){
         runRRSimulation();
+    } else if (schedulingTypesToUse.contains("First In First Out")){
+        runFiFoSimulation();
     } else {
         // Aquí se implementaría la lógica para los otros algoritmos
         QMessageBox::information(this, "Información", "La simulación para el algoritmo seleccionado no está implementada aún.");
@@ -297,6 +297,26 @@ void SimulatorClient::onSchedulingSimClicked() {
         syncButton->show();
     }
     
+}
+
+void SimulatorClient::runFiFoSimulation() {
+    // Configurar el scheduler con los procesos
+    fifoScheduler->setProcesses(processList);
+    
+    // Configurar el diagrama de Gantt
+    fifoScheduler->setupGanttChart(ganttView);
+    
+    // Iniciar la simulación
+    fifoScheduler->startSimulation();
+}
+
+void SimulatorClient::onFiFoSimulationFinished(double avgWaitingTime) {
+    // Mostrar métricas
+    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+    metricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación completada", 
+                           "La simulación 'First In First Out' ha finalizado.\n" + metrics);
 }
 
 void SimulatorClient::runRRSimulation() {
