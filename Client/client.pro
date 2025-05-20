@@ -1,5 +1,8 @@
 QT += widgets
 
-HEADERS += client.h
+HEADERS += client.h \
+           priority_scheduler.h \
+           structures.h
 
-SOURCES += client.cpp
+SOURCES += client.cpp \
+           priority_scheduler.cpp

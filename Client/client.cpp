@@ -10,9 +10,10 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QCheckBox>
+#include <QGraphicsView>
 
 SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
-    resize(800, 400);
+    resize(800, 600); // Aumentamos la altura para el diagrama de Gantt
     setWindowTitle("Simulator");
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -158,12 +159,12 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     
     ///////////////////////////////////////////////////////////////////
 
-    // TEMPORAL, MIENTRAS HACEMOS LA SIMULACIÓN :)
-    processListLabel = new QLabel(this);
-    processListLabel->setAlignment(Qt::AlignLeft); // o Qt::AlignCenter
-    mainLayout->addWidget(processListLabel);
-    processListLabel->hide(); // si quieres ocultarlo al inicio
-
+    // NUEVO: Widget para la simulación con diagrama de Gantt
+    simulationWidget = new QWidget(this);
+    setupSimulationWidget();
+    mainLayout->addWidget(simulationWidget);
+    simulationWidget->hide();
+    
     ///////////////////////////////////////////////////////////////////
     
     setLayout(mainLayout);
@@ -176,10 +177,42 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
-    //// AÑADIR CONNECTS A SUS BOTONES PARA LEER ARCHIVOS :)
-    // connect(BOTON SIMULACION PROCESO, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
-    // connect(BOTON SIMULACION ACTIVIDAD, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Actions);
-    // connect(BOTON SIMULACION RECURSOS, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Resources);
+    
+    // Inicializar el scheduler de priority
+    priorityScheduler = new PriorityScheduler(this);
+    connect(priorityScheduler, &PriorityScheduler::simulationFinished, 
+            this, &SimulatorClient::onPrioritySimulationFinished);
+}
+
+void SimulatorClient::setupSimulationWidget() {
+    QVBoxLayout *simLayout = new QVBoxLayout(simulationWidget);
+    
+    // Título de la simulación
+    QLabel *simTitle = new QLabel("Simulación de Calendarización", this);
+    simTitle->setAlignment(Qt::AlignCenter);
+    simLayout->addWidget(simTitle);
+    
+    // Vista para el diagrama de Gantt
+    ganttView = new QGraphicsView(this);
+    ganttView->setMinimumHeight(300);
+    simLayout->addWidget(ganttView);
+    
+    // Etiqueta para mostrar métricas
+    metricsLabel = new QLabel(this);
+    metricsLabel->setAlignment(Qt::AlignCenter);
+    simLayout->addWidget(metricsLabel);
+    
+    // Botón para regresar
+    QPushButton *backButton = new QPushButton("Regresar al menú principal", this);
+    simLayout->addWidget(backButton);
+    
+    connect(backButton, &QPushButton::clicked, [=]() {
+        simulationWidget->hide();
+        welcomeLabel->show();
+        chooseLabel->show();
+        scheduleButton->show();
+        syncButton->show();
+    });
 }
 
 // lógica cuando el botón "Calendarización" es presionado
@@ -216,6 +249,8 @@ void SimulatorClient::onReturnClicked() {
 }
 
 void SimulatorClient::onCheckBoxMarked() {
+    schedulingTypesToUse.clear(); // Limpiar la lista primero
+    
     if (fcfsCheckBox->isChecked()) schedulingTypesToUse.append("First In First Out");
     if (sjfCheckBox->isChecked()) schedulingTypesToUse.append("Shortest Job First");
     if (srtCheckBox->isChecked()) schedulingTypesToUse.append("Shortest Remaining Time");
@@ -225,21 +260,55 @@ void SimulatorClient::onCheckBoxMarked() {
 
 void SimulatorClient::onSchedulingSimClicked() {
     onCheckBoxMarked();
+    
+    if (schedulingTypesToUse.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe seleccionar al menos un tipo de calendarización.");
+        return;
+    }
+    
+    if (processList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe añadir al menos un archivo de procesos.");
+        return;
+    }
+    
+    // Ocultar pantalla de opciones
     scheduleOptionsWidget->hide();
-
-    // SEÑAL DE FUNCIONAMIENTO
-    QString displayText;
-    displayText += "Scheduling Types selected\n";
-    for (const QString &st : schedulingTypesToUse) {
-        displayText += st + "\n";
+    
+    // Mostrar pantalla de simulación
+    simulationWidget->show();
+    
+    // Iniciar la simulación correspondiente
+    if (schedulingTypesToUse.contains("Priority")) {
+        runPrioritySimulation();
+    } else {
+        // Aquí se implementaría la lógica para los otros algoritmos
+        QMessageBox::information(this, "Información", "La simulación para el algoritmo seleccionado no está implementada aún.");
+        simulationWidget->hide();
+        welcomeLabel->show();
+        chooseLabel->show();
+        scheduleButton->show();
+        syncButton->show();
     }
+}
 
-    displayText += "\nProcess ID's\n";
-    for (const Process &p : processList) {
-        displayText += p.pid + "\n";
-    }
-    processListLabel->setText(displayText);
-    processListLabel->show(); 
+void SimulatorClient::runPrioritySimulation() {
+    // Configurar el scheduler con los procesos
+    priorityScheduler->setProcesses(processList);
+    
+    // Configurar el diagrama de Gantt
+    priorityScheduler->setupGanttChart(ganttView);
+    
+    // Iniciar la simulación
+    priorityScheduler->startSimulation();
+}
+
+void SimulatorClient::onPrioritySimulationFinished(double avgWaitingTime) {
+    // Mostrar métricas
+    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+    metricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación completada", 
+                           "La simulación de Priority ha finalizado.\n" + metrics);
 }
 
 void SimulatorClient::onAddFileClicked_Process() {
@@ -254,6 +323,9 @@ void SimulatorClient::onAddFileClicked_Process() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            // Limpiar lista de procesos anterior
+            processList.clear();
+            
             openFileLabel->setText("Usando el archivo: " + fileName);
             openFileLabel->show();
 
@@ -273,6 +345,10 @@ void SimulatorClient::onAddFileClicked_Process() {
                 }
             }
             file.close();
+            
+            // Mostrar información de los procesos cargados
+            QString info = QString("Se han cargado %1 procesos desde el archivo.").arg(processList.size());
+            QMessageBox::information(this, "Archivo cargado", info);
         } else {
             QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
         }

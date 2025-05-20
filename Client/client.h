@@ -6,7 +6,9 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QLineEdit>
-#include "structures.cpp"
+#include <QGraphicsView>
+#include "structures.h"
+#include "priority_scheduler.h"
 
 class SimulatorClient : public QWidget {
     Q_OBJECT
@@ -23,6 +25,7 @@ public slots:
     void onAddFileClicked_Process();
     void onAddFileClicked_Resources();
     void onAddFileClicked_Actions();
+    void onPrioritySimulationFinished(double avgWaitingTime);
 
 private:
     // General
@@ -40,6 +43,7 @@ private:
     QLabel *instrLabel2;
     QLabel *openFileLabel;
     QLabel *processListLabel; // Temporal
+    QLabel *metricsLabel;
 
     // Buttons
     QPushButton *scheduleButton;
@@ -65,6 +69,17 @@ private:
     // Contenedores
     QWidget *scheduleOptionsWidget;
     QWidget *syncOptionsWidget;
+    QWidget *simulationWidget;
+
+    // Componentes para visualización de simulación
+    QGraphicsView *ganttView;
+    
+    // Schedulers
+    PriorityScheduler *priorityScheduler;
+    
+    // Métodos privados
+    void setupSimulationWidget();
+    void runPrioritySimulation();
 };
 
 #endif // CLIENT_H
