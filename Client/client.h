@@ -10,6 +10,7 @@
 #include "structures.h"
 #include "fifo_scheduler.h"
 #include "sjf_scheduler.h"
+#include "srt_scheduler.h"
 #include "priority_scheduler.h"
 #include "rr_scheduler.h"
 
@@ -79,6 +80,7 @@ private:
     // Schedulers
     FiFoScheduler *fifoScheduler;
     ShortestJobFirstScheduler *sjfScheduler;
+    ShortestRemainingTimeScheduler *srtScheduler;
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
    
@@ -86,6 +88,7 @@ private:
     void setupSimulationWidget();
     void runFiFoSimulation();
     void runSJFSimulation();
+    void runSRTSimulation();
     void runPrioritySimulation();
     void runRRSimulation();
 };

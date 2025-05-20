@@ -181,6 +181,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(sjfScheduler, &ShortestJobFirstScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
 
+    // Inicilizar el scheduler de Shortest Remaining Time
+    srtScheduler = new ShortestRemainingTimeScheduler(this);
+    connect(srtScheduler, &ShortestRemainingTimeScheduler::simulationFinished, 
+            this, &SimulatorClient::onSimulationFinished);
+
     // Inicilizar el scheduler de RoundRobin
     rrScheduler = new RoundRobinScheduler(this);
     connect(rrScheduler, &RoundRobinScheduler::simulationFinished, 
@@ -284,19 +289,23 @@ void SimulatorClient::onSchedulingSimClicked() {
     
     // Mostrar pantalla de simulación
     simulationWidget->show();
-    
-    // Iniciar la simulación correspondiente
-    if (schedulingTypesToUse.contains("Priority")) {
-        runPrioritySimulation();
-    } else if (schedulingTypesToUse.contains("Round Robin")){
-        runRRSimulation();
-    } else if (schedulingTypesToUse.contains("First In First Out")){
-        runFiFoSimulation();
-    } else if (schedulingTypesToUse.contains("Shortest Job First")){
-        runSJFSimulation();
+
+    if (schedulingTypesToUse.length() == 1) {
+        // Iniciar la simulación correspondiente
+        if (schedulingTypesToUse.contains("Priority")) {
+            runPrioritySimulation();
+        } else if (schedulingTypesToUse.contains("Round Robin")){
+            runRRSimulation();
+        } else if (schedulingTypesToUse.contains("First In First Out")){
+            runFiFoSimulation();
+        } else if (schedulingTypesToUse.contains("Shortest Job First")){
+            runSJFSimulation();
+        } else if (schedulingTypesToUse.contains("Shortest Remaining Time")){
+            runSRTSimulation();
+        }
     } else {
-        // Aquí se implementaría la lógica para los otros algoritmos
-        QMessageBox::information(this, "Información", "La simulación para el algoritmo seleccionado no está implementada aún.");
+        // Aquí se implementaría la lógica para varios algoritmos
+        QMessageBox::information(this, "Información", "Aún no tenemos la lógica para tantos :(");
         simulationWidget->hide();
         welcomeLabel->show();
         chooseLabel->show();
@@ -335,6 +344,17 @@ void SimulatorClient::runSJFSimulation() {
     
     // Iniciar la simulación
     sjfScheduler->startSimulation();
+}
+
+void SimulatorClient::runSRTSimulation() {
+    // Configurar el scheduler con los procesos
+    srtScheduler->setProcesses(processList);
+    
+    // Configurar el diagrama de Gantt
+    srtScheduler->setupGanttChart(ganttView);
+    
+    // Iniciar la simulación
+    srtScheduler->startSimulation();
 }
 
 void SimulatorClient::runRRSimulation() {
