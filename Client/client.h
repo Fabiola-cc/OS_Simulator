@@ -9,6 +9,7 @@
 #include <QGraphicsView>
 #include "structures.h"
 #include "priority_scheduler.h"
+#include "rr_scheduler.h"
 
 class SimulatorClient : public QWidget {
     Q_OBJECT
@@ -26,6 +27,7 @@ public slots:
     void onAddFileClicked_Resources();
     void onAddFileClicked_Actions();
     void onPrioritySimulationFinished(double avgWaitingTime);
+    void onRRFinished(double averageWaitingTime);
 
 private:
     // General
@@ -75,11 +77,14 @@ private:
     QGraphicsView *ganttView;
     
     // Schedulers
+    RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
+   
     
     // Métodos privados
     void setupSimulationWidget();
     void runPrioritySimulation();
+    void runRRSimulation();
 };
 
 #endif // CLIENT_H

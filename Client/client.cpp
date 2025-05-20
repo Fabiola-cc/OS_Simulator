@@ -178,6 +178,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     
+    // Inicilizar el schedyler de RoundRobin
+    rrScheduler = new RoundRobinScheduler(this);
+    connect(rrScheduler, &RoundRobinScheduler::simulationFinished, 
+            this, &SimulatorClient::onRRFinished);
+
     // Inicializar el scheduler de priority
     priorityScheduler = new PriorityScheduler(this);
     connect(priorityScheduler, &PriorityScheduler::simulationFinished, 
@@ -194,7 +199,7 @@ void SimulatorClient::setupSimulationWidget() {
     
     // Vista para el diagrama de Gantt
     ganttView = new QGraphicsView(this);
-    ganttView->setMinimumHeight(300);
+    ganttView->setFixedHeight(120);
     simLayout->addWidget(ganttView);
     
     // Etiqueta para mostrar métricas
@@ -280,6 +285,8 @@ void SimulatorClient::onSchedulingSimClicked() {
     // Iniciar la simulación correspondiente
     if (schedulingTypesToUse.contains("Priority")) {
         runPrioritySimulation();
+    } else if (schedulingTypesToUse.contains("Round Robin")){
+        runRRSimulation();
     } else {
         // Aquí se implementaría la lógica para los otros algoritmos
         QMessageBox::information(this, "Información", "La simulación para el algoritmo seleccionado no está implementada aún.");
@@ -289,6 +296,29 @@ void SimulatorClient::onSchedulingSimClicked() {
         scheduleButton->show();
         syncButton->show();
     }
+    
+}
+
+void SimulatorClient::runRRSimulation() {
+    // Configurar el scheduler con los procesos
+    rrScheduler->setProcesses(processList);
+    int quantum = quantumInput->text().toInt();
+    rrScheduler->setQuantum(quantum);
+    
+    // Configurar el diagrama de Gantt
+    rrScheduler->setupGanttChart(ganttView);
+    
+    // Iniciar la simulación
+    rrScheduler->startSimulation();
+}
+
+void SimulatorClient::onRRFinished(double avgWaitingTime) {
+    // Mostrar métricas
+    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+    metricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación completada", 
+                           "La simulación de Round Robin ha finalizado.\n" + metrics);
 }
 
 void SimulatorClient::runPrioritySimulation() {

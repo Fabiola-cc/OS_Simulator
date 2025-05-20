@@ -28,26 +28,21 @@ void PriorityScheduler::setupGanttChart(QGraphicsView *view) {
     // Limpiar la escena
     ganttScene->clear();
     
-    // Configurar la escena para el diagrama de Gantt
-    ganttScene->setSceneRect(0, 0, 5000, 300); // Amplio para permitir scroll
+    // Configurar una escena más compacta (una sola fila horizontal)
+    ganttScene->setSceneRect(0, 0, 5000, 100); // Altura reducida
     
-    // Dibujar líneas horizontales de base y etiquetas de procesos
-    for (int i = 0; i < processes.size(); i++) {
-        // Línea base
-        ganttScene->addLine(0, (i+1)*30, 5000, (i+1)*30, QPen(Qt::lightGray));
-        
-        // Etiqueta del proceso
-        QGraphicsTextItem *label = ganttScene->addText(processes[i].pid);
-        label->setPos(-50, i*30 + 10);
-    }
-    
-    // Dibujar líneas verticales para los ciclos (se actualizarán durante la simulación)
-    for (int i = 0; i <= 100; i++) { // Inicialmente dibujamos 100 ciclos
-        ganttScene->addLine(i*30, 0, i*30, (processes.size()+1)*30, QPen(Qt::lightGray));
+    // Línea base para la fila única
+    ganttScene->addLine(0, 30, 5000, 30, QPen(Qt::white)); // línea horizontal única
+
+    // Dibujar líneas verticales y etiquetas de tiempo
+    for (int i = 0; i <= 100; i++) {
+        int x = i * 30;
+        ganttScene->addLine(x, 0, x, 60, QPen(Qt::white)); // líneas verticales
         QGraphicsTextItem *timeLabel = ganttScene->addText(QString::number(i));
-        timeLabel->setPos(i*30 - 5, (processes.size()+1)*30);
+        timeLabel->setPos(x - 5, 65); // etiqueta del tiempo
     }
 }
+
 
 void PriorityScheduler::setProcesses(const QList<Process>& newProcesses) {
     processes = newProcesses;
@@ -94,9 +89,6 @@ void PriorityScheduler::startSimulation() {
         waitingTimes.clear();
         completionTimes.clear();
         
-        // Inicializar diagramas
-        drawGanttChart();
-        
         // Iniciar el timer (velocidad de la animación: 500ms por ciclo)
         simulationTimer->start(500);
     }
@@ -138,7 +130,7 @@ void PriorityScheduler::updateSimulation() {
     // Si no hay un proceso en ejecución, buscar el siguiente por prioridad
     if (currentProcess == nullptr || currentProcess->burstTime <= 0) {
         currentProcess = getNextProcessByPriority();
-        
+
         // Si no hay procesos disponibles en este momento
         if (currentProcess == nullptr) {
             // Verificar si quedan procesos por llegar
@@ -149,7 +141,7 @@ void PriorityScheduler::updateSimulation() {
                     break;
                 }
             }
-            
+
             if (!pendingProcesses) {
                 // Todos los procesos han terminado
                 stopSimulation();
@@ -157,55 +149,60 @@ void PriorityScheduler::updateSimulation() {
             } else {
                 // Avanzar el tiempo hasta el siguiente proceso
                 currentTime++;
-                // Dibujar un espacio vacío (CPU idle)
+
+                // Dibujar un espacio vacío (CPU idle) en la fila única
+                int y = 30;
                 ganttScene->addRect(
-                    currentTime * 30 - 30, 0, 30, processes.size() * 30, 
+                    (currentTime - 1) * 30, y, 30, 30,
                     QPen(Qt::black), QBrush(Qt::lightGray)
                 );
+
                 QGraphicsTextItem *idleText = ganttScene->addText("idle");
-                idleText->setPos(currentTime * 30 - 25, processes.size() * 30 / 2);
-                
-                // Asegurar que el diagrama sea visible desplazándose
+                idleText->setPos((currentTime - 1) * 30 + 5, y + 5);
+
+                // Desplazar la vista para mostrar el ciclo actual
                 ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
                 return;
             }
         }
     }
-    
+
     // Ejecutar el proceso actual por un ciclo
     currentProcess->burstTime--;
-    
-    // Dibujar el ciclo actual en el diagrama de Gantt
-    int processIndex = processes.indexOf(*currentProcess);
+
+    // Dibujar el ciclo actual en la misma fila (y = 30)
+    int y = 30;
     ganttScene->addRect(
-        currentTime * 30, processIndex * 30, 30, 30, 
+        currentTime * 30, y, 30, 30,
         QPen(Qt::black), QBrush(processColors[currentProcess->pid])
     );
-    
+
     // Añadir texto del proceso en el diagrama
     QGraphicsTextItem *textItem = ganttScene->addText(currentProcess->pid);
-    textItem->setPos(currentTime * 30 + 5, processIndex * 30 + 5);
-    
+    textItem->setPos(currentTime * 30 + 5, y + 5);
+
     // Si el proceso ha terminado, registrar su tiempo de finalización
     if (currentProcess->burstTime <= 0) {
         completionTimes[currentProcess->pid] = currentTime + 1;
-        int waitTime = completionTimes[currentProcess->pid] - 
-                       arrivalSortedProcesses[processIndex].arrivalTime - 
-                       arrivalSortedProcesses[processIndex].burstTime;
-        waitingTimes[currentProcess->pid] = waitTime;
+
+        // Buscar el proceso original en arrivalSortedProcesses para obtener el burst original
+        auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
+                               [&](const Process& p) { return p.pid == currentProcess->pid; });
+
+        if (it != arrivalSortedProcesses.end()) {
+            int waitTime = completionTimes[currentProcess->pid] -
+                           it->arrivalTime - it->burstTime;
+            waitingTimes[currentProcess->pid] = waitTime;
+        }
     }
-    
+
     // Avanzar el tiempo
     currentTime++;
-    
+
     // Desplazar la vista para mostrar el ciclo actual
     ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
 }
 
-void PriorityScheduler::drawGanttChart() {
-    // Ya se configura en setupGanttChart y se va dibujando dinámicamente
-    // en updateSimulation
-}
 
 void PriorityScheduler::calculateMetrics() {
     double totalWaitingTime = 0;
