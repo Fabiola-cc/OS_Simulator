@@ -9,6 +9,7 @@
 #include <QGraphicsView>
 #include "structures.h"
 #include "fifo_scheduler.h"
+#include "sjf_scheduler.h"
 #include "priority_scheduler.h"
 #include "rr_scheduler.h"
 
@@ -27,9 +28,7 @@ public slots:
     void onAddFileClicked_Process();
     void onAddFileClicked_Resources();
     void onAddFileClicked_Actions();
-    void onFiFoSimulationFinished(double avgWaitingTime);
-    void onPrioritySimulationFinished(double avgWaitingTime);
-    void onRRFinished(double averageWaitingTime);
+    void onSimulationFinished(double avgWaitingTime);
 
 private:
     // General
@@ -79,13 +78,14 @@ private:
     
     // Schedulers
     FiFoScheduler *fifoScheduler;
+    ShortestJobFirstScheduler *sjfScheduler;
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
    
-    
     // Métodos privados
     void setupSimulationWidget();
     void runFiFoSimulation();
+    void runSJFSimulation();
     void runPrioritySimulation();
     void runRRSimulation();
 };

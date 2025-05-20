@@ -152,7 +152,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     
     ///////////////////////////////////////////////////////////////////
 
-    // NUEVO: Widget para la simulación con diagrama de Gantt
+    // Widget para la simulación con diagrama de Gantt
     simulationWidget = new QWidget(this);
     setupSimulationWidget();
     mainLayout->addWidget(simulationWidget);
@@ -174,17 +174,22 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     // Inicilizar el scheduler de First in First Out
     fifoScheduler = new FiFoScheduler(this);
     connect(fifoScheduler, &FiFoScheduler::simulationFinished, 
-            this, &SimulatorClient::onRRFinished);
+            this, &SimulatorClient::onSimulationFinished);
+
+    // Inicilizar el scheduler de Shortest Job First
+    sjfScheduler = new ShortestJobFirstScheduler(this);
+    connect(sjfScheduler, &ShortestJobFirstScheduler::simulationFinished, 
+            this, &SimulatorClient::onSimulationFinished);
 
     // Inicilizar el scheduler de RoundRobin
     rrScheduler = new RoundRobinScheduler(this);
     connect(rrScheduler, &RoundRobinScheduler::simulationFinished, 
-            this, &SimulatorClient::onRRFinished);
+            this, &SimulatorClient::onSimulationFinished);
 
     // Inicializar el scheduler de priority
     priorityScheduler = new PriorityScheduler(this);
     connect(priorityScheduler, &PriorityScheduler::simulationFinished, 
-            this, &SimulatorClient::onPrioritySimulationFinished);
+            this, &SimulatorClient::onSimulationFinished);
 }
 
 void SimulatorClient::setupSimulationWidget() {
@@ -287,6 +292,8 @@ void SimulatorClient::onSchedulingSimClicked() {
         runRRSimulation();
     } else if (schedulingTypesToUse.contains("First In First Out")){
         runFiFoSimulation();
+    } else if (schedulingTypesToUse.contains("Shortest Job First")){
+        runSJFSimulation();
     } else {
         // Aquí se implementaría la lógica para los otros algoritmos
         QMessageBox::information(this, "Información", "La simulación para el algoritmo seleccionado no está implementada aún.");
@@ -297,6 +304,15 @@ void SimulatorClient::onSchedulingSimClicked() {
         syncButton->show();
     }
     
+}
+
+void SimulatorClient::onSimulationFinished(double avgWaitingTime) {
+    // Mostrar métricas
+    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+    metricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación completada", 
+                           "La simulación ha finalizado.\n" + metrics);
 }
 
 void SimulatorClient::runFiFoSimulation() {
@@ -310,13 +326,15 @@ void SimulatorClient::runFiFoSimulation() {
     fifoScheduler->startSimulation();
 }
 
-void SimulatorClient::onFiFoSimulationFinished(double avgWaitingTime) {
-    // Mostrar métricas
-    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
-    metricsLabel->setText(metrics);
+void SimulatorClient::runSJFSimulation() {
+    // Configurar el scheduler con los procesos
+    sjfScheduler->setProcesses(processList);
     
-    QMessageBox::information(this, "Simulación completada", 
-                           "La simulación 'First In First Out' ha finalizado.\n" + metrics);
+    // Configurar el diagrama de Gantt
+    sjfScheduler->setupGanttChart(ganttView);
+    
+    // Iniciar la simulación
+    sjfScheduler->startSimulation();
 }
 
 void SimulatorClient::runRRSimulation() {
@@ -332,15 +350,6 @@ void SimulatorClient::runRRSimulation() {
     rrScheduler->startSimulation();
 }
 
-void SimulatorClient::onRRFinished(double avgWaitingTime) {
-    // Mostrar métricas
-    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
-    metricsLabel->setText(metrics);
-    
-    QMessageBox::information(this, "Simulación completada", 
-                           "La simulación de Round Robin ha finalizado.\n" + metrics);
-}
-
 void SimulatorClient::runPrioritySimulation() {
     // Configurar el scheduler con los procesos
     priorityScheduler->setProcesses(processList);
@@ -350,15 +359,6 @@ void SimulatorClient::runPrioritySimulation() {
     
     // Iniciar la simulación
     priorityScheduler->startSimulation();
-}
-
-void SimulatorClient::onPrioritySimulationFinished(double avgWaitingTime) {
-    // Mostrar métricas
-    QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
-    metricsLabel->setText(metrics);
-    
-    QMessageBox::information(this, "Simulación completada", 
-                           "La simulación de Priority ha finalizado.\n" + metrics);
 }
 
 void SimulatorClient::onAddFileClicked_Process() {
