@@ -10,6 +10,7 @@
 FiFoScheduler::FiFoScheduler(QObject *parent) : QObject(parent) {
     ganttScene = new QGraphicsScene(this);
     simulationTimer = new QTimer(this);
+    nextIndex = 0;
     currentTime = 0;
     currentProcessIndex = 0;
     simulationRunning = false;
@@ -80,6 +81,7 @@ void FiFoScheduler::assignProcessColors() {
 void FiFoScheduler::startSimulation() {
     if (!simulationRunning && !processes.isEmpty()) {
         // Inicializar variables de simulación
+        nextIndex = 0;
         currentTime = 0;
         currentProcessIndex = 0;
         currentProcess = nullptr;
@@ -102,28 +104,23 @@ void FiFoScheduler::stopSimulation() {
     calculateMetrics();
 }
 
-Process* FiFoScheduler::getNextProcessByOrder() {
-    Process* next = nullptr;
-    int earliestCome = INT_MAX; // Menor número = Mayor prioridad
-    
-    // Busca entre todos los procesos que han llegado pero no han terminado
-    for (int i = 0; i < processes.size(); i++) {
-        // Si el proceso ya ha llegado y no ha completado su ejecución
-        if (processes[i].arrivalTime <= currentTime && processes[i].burstTime > 0) {
-            if (processes[i].arrivalTime < earliestCome) {
-                earliestCome = processes[i].arrivalTime;
-                next = &processes[i];
-            }
-        }
-    }
-    
-    return next;
-}
-
 void FiFoScheduler::updateSimulation() {
     // Si no hay un proceso en ejecución, buscar el siguiente según su llegada
     if (currentProcess == nullptr || currentProcess->burstTime <= 0) {
-        currentProcess = getNextProcessByOrder();
+        // Obtener el siguiente proceso desde arrivalSortedProcesses
+        if (nextIndex >= arrivalSortedProcesses.size()) {
+            stopSimulation(); // Todos terminaron
+            return;
+        }
+
+        // Buscar el proceso original para modificar su burstTime real
+        QString pid = arrivalSortedProcesses[nextIndex].pid;
+        for (Process& p : processes) {
+            if (p.pid == pid) {
+                currentProcess = &p;
+                break;
+            }
+        }
 
         // Si no hay procesos disponibles en este momento
         if (currentProcess == nullptr) {
@@ -159,6 +156,7 @@ void FiFoScheduler::updateSimulation() {
                 return;
             }
         }
+        nextIndex++;
     }
 
     // Ejecutar el proceso actual por un ciclo
@@ -184,8 +182,7 @@ void FiFoScheduler::updateSimulation() {
                                [&](const Process& p) { return p.pid == currentProcess->pid; });
 
         if (it != arrivalSortedProcesses.end()) {
-            int waitTime = completionTimes[currentProcess->pid] -
-                           it->arrivalTime - it->burstTime;
+            int waitTime = completionTimes[currentProcess->pid] - it->burstTime;
             waitingTimes[currentProcess->pid] = waitTime;
         }
     }
@@ -211,4 +208,30 @@ void FiFoScheduler::calculateMetrics() {
     
     // Emitir señal con resultados
     emit simulationFinished(avgWaitingTime);
+}
+
+double FiFoScheduler::simulateWithoutGUI() {
+    // Limpiar métricas anteriores
+    completionTimes.clear();
+    waitingTimes.clear();
+    currentTime = 0;
+
+    for (const Process& p : arrivalSortedProcesses) {
+        int startTime = std::max(currentTime, p.arrivalTime);
+        int finishTime = startTime + p.burstTime;
+        int waitingTime = startTime;
+
+        currentTime = finishTime;
+
+        completionTimes[p.pid] = finishTime;
+        waitingTimes[p.pid] = waitingTime;
+    }
+
+    // Calcular promedio
+    double totalWaitingTime = 0;
+    for (const QString& pid : waitingTimes.keys()) {
+        totalWaitingTime += waitingTimes[pid];
+    }
+
+    return totalWaitingTime / processes.size();
 }

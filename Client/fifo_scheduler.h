@@ -18,6 +18,7 @@ public:
     void setProcesses(const QList<Process>& newProcesses);
     void startSimulation();
     void stopSimulation();
+    double simulateWithoutGUI();
 
 signals:
     void simulationFinished(double averageWaitingTime);
@@ -42,6 +43,7 @@ private:
     QTimer *simulationTimer;
     
     // Estado actual de la simulación
+    int nextIndex;
     int currentTime;
     int currentProcessIndex;
     bool simulationRunning;

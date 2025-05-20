@@ -47,6 +47,18 @@ private:
     QLabel *instrLabel2;
     QLabel *openFileLabel;
     QLabel *metricsLabel;
+    
+    // Labels Para mostrar las métricas de varios calendarizadores
+    QLabel *fifoMetricsLabel;
+    QLabel *fifoTitleLabel;
+    QLabel *sjfMetricsLabel;
+    QLabel *sjfTitleLabel;
+    QLabel *srtMetricsLabel;
+    QLabel *srtTitleLabel;
+    QLabel *rrMetricsLabel;
+    QLabel *rrTitleLabel;
+    QLabel *priMetricsLabel;
+    QLabel *priTitleLabel;
 
     // Buttons
     QPushButton *scheduleButton;
@@ -73,6 +85,7 @@ private:
     QWidget *scheduleOptionsWidget;
     QWidget *syncOptionsWidget;
     QWidget *simulationWidget;
+    QWidget *scheduleMetricsWidget;
 
     // Componentes para visualización de simulación
     QGraphicsView *ganttView;
@@ -86,6 +99,7 @@ private:
    
     // Métodos privados
     void setupSimulationWidget();
+    void calculateSchedulingMetrics();
     void runFiFoSimulation();
     void runSJFSimulation();
     void runSRTSimulation();

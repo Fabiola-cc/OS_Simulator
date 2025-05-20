@@ -205,3 +205,60 @@ void ShortestRemainingTimeScheduler::calculateMetrics() {
     // Emitir señal con resultados
     emit simulationFinished(avgWaitingTime);
 }
+
+double ShortestRemainingTimeScheduler::simulateWithoutGUI() {
+    completionTimes.clear();
+    waitingTimes.clear();
+    currentTime = 0;
+
+    int totalProcesses = processes.size();
+    int completed = 0;
+
+    while (completed < totalProcesses) {
+        Process* current = nullptr;
+        int minRemaining = INT_MAX;
+
+        // Buscar el proceso con menor tiempo restante que haya llegado
+        for (Process& p : processes) {
+            if (p.arrivalTime <= currentTime && p.burstTime > 0 && p.burstTime < minRemaining) {
+                minRemaining = p.burstTime;
+                current = &p;
+            }
+        }
+
+        if (current == nullptr) {
+            // No hay procesos disponibles, avanzar el tiempo
+            currentTime++;
+            continue;
+        }
+
+        // Ejecutar el proceso por un ciclo
+        current->burstTime--;
+        currentTime++;
+
+        if (current->burstTime == 0) {
+            completed++;
+            int finishTime = currentTime;
+            completionTimes[current->pid] = finishTime;
+
+            // Buscar burst original
+            auto it = std::find_if(burstSortedProcesses.begin(), burstSortedProcesses.end(),
+                                [&](const Process& p) { return p.pid == current->pid; });
+
+            if (it != burstSortedProcesses.end()) {
+                int waitTime = completionTimes[current->pid] - it->arrivalTime - it->burstTime;
+                waitingTimes[current->pid] = waitTime;
+            }
+        }
+    }
+
+    double totalWaitingTime = 0;
+    
+    // Calcular tiempo de espera para cada proceso
+    for (const QString& pid : waitingTimes.keys()) {
+        totalWaitingTime += waitingTimes[pid];
+    }
+    
+    // Calcular tiempo de espera promedio
+    return totalWaitingTime / processes.size();
+}

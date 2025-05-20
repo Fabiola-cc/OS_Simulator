@@ -5,8 +5,7 @@
 #include <QRandomGenerator>
 #include <QColor>
 #include <algorithm>
-#include <climits> 
-#include <QDebug>
+#include <climits>
 
 ShortestJobFirstScheduler::ShortestJobFirstScheduler(QObject *parent) : QObject(parent) {
     ganttScene = new QGraphicsScene(this);
@@ -208,4 +207,38 @@ void ShortestJobFirstScheduler::calculateMetrics() {
     
     // Emitir señal con resultados
     emit simulationFinished(avgWaitingTime);
+}
+
+double ShortestJobFirstScheduler::simulateWithoutGUI() {
+    completionTimes.clear();
+    waitingTimes.clear();
+    currentTime = 0;
+
+    QList<Process> readyQueue = processes;
+    QList<QString> executedPIDs;
+
+    int completed = 0;
+
+    while (completed < processes.size()) {
+        Process selected = burstSortedProcesses.first();
+        int startTime = currentTime;
+        int finishTime = startTime + selected.burstTime;
+        int waitingTime = startTime;
+
+        currentTime = finishTime;
+        executedPIDs.append(selected.pid);
+        completionTimes[selected.pid] = finishTime;
+        waitingTimes[selected.pid] = waitingTime;
+        
+        burstSortedProcesses.removeFirst();
+        completed++;
+    }
+
+    // Calcular promedio
+    double totalWaitingTime = 0;
+    for (const QString& pid : waitingTimes.keys()) {
+        totalWaitingTime += waitingTimes[pid];
+    }
+
+    return totalWaitingTime / processes.size();
 }

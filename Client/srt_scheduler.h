@@ -28,6 +28,9 @@ public:
     // Detiene la simulación
     void stopSimulation();
 
+    // Método para simular sin interfaz
+    double simulateWithoutGUI();
+
 signals:
     // Señal emitida cuando la simulación termina
     void simulationFinished(double avgWaitingTime);

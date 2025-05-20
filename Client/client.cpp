@@ -11,6 +11,7 @@
 #include <QLabel>
 #include <QCheckBox>
 #include <QGraphicsView>
+#include <QDebug>
 
 SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     resize(800, 600); // Aumentamos la altura para el diagrama de Gantt
@@ -159,6 +160,57 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     simulationWidget->hide();
     
     ///////////////////////////////////////////////////////////////////
+
+    // Widget para obtener las métricas de varios tipos de calendarización
+    scheduleMetricsWidget = new QWidget(this);
+
+    QVBoxLayout *scheduleMetricsLayout = new QVBoxLayout(scheduleMetricsWidget);
+    
+    // Título
+    QLabel *sMetricsTitle = new QLabel("Métricas de Calendarización", this);
+    sMetricsTitle->setAlignment(Qt::AlignCenter);
+    scheduleMetricsLayout->addWidget(sMetricsTitle);
+
+    // Labels por métrica
+    fifoTitleLabel = new QLabel("First In First Out", this);
+    fifoMetricsLabel = new QLabel(this);
+    sjfTitleLabel = new QLabel("Shortest Job First", this);
+    sjfMetricsLabel = new QLabel(this);
+    srtTitleLabel = new QLabel("Shortest Remaining Time", this);
+    srtMetricsLabel = new QLabel(this);
+    rrTitleLabel = new QLabel("Round Robin", this);
+    rrMetricsLabel = new QLabel(this);
+    priTitleLabel = new QLabel("Priority", this);
+    priMetricsLabel = new QLabel("", this);
+
+    // Agregar labels a layout
+    scheduleMetricsLayout->addWidget(fifoTitleLabel);
+    scheduleMetricsLayout->addWidget(fifoMetricsLabel);
+    scheduleMetricsLayout->addWidget(sjfTitleLabel);
+    scheduleMetricsLayout->addWidget(sjfMetricsLabel);
+    scheduleMetricsLayout->addWidget(srtTitleLabel);
+    scheduleMetricsLayout->addWidget(srtMetricsLabel);
+    scheduleMetricsLayout->addWidget(rrTitleLabel);
+    scheduleMetricsLayout->addWidget(rrMetricsLabel);
+    scheduleMetricsLayout->addWidget(priTitleLabel);
+    scheduleMetricsLayout->addWidget(priMetricsLabel);
+
+    // Botón para regresar
+    QPushButton *backButton = new QPushButton("Regresar al menú principal", this);
+    scheduleMetricsLayout->addWidget(backButton);
+
+    connect(backButton, &QPushButton::clicked, [=]() {
+        scheduleMetricsWidget->hide();
+        welcomeLabel->show();
+        chooseLabel->show();
+        scheduleButton->show();
+        syncButton->show();
+    });
+
+    mainLayout->addWidget(scheduleMetricsWidget);
+    scheduleMetricsWidget->hide();
+    
+    ///////////////////////////////////////////////////////////////////
     
     setLayout(mainLayout);
 
@@ -167,7 +219,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(schedulingSimButton, &QPushButton::clicked, this, &SimulatorClient::onSchedulingSimClicked);
     connect(returnButton, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     connect(addFileButton, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
-
+    
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     
@@ -286,11 +338,11 @@ void SimulatorClient::onSchedulingSimClicked() {
     
     // Ocultar pantalla de opciones
     scheduleOptionsWidget->hide();
-    
-    // Mostrar pantalla de simulación
-    simulationWidget->show();
 
     if (schedulingTypesToUse.length() == 1) {
+        // Mostrar pantalla de simulación
+        simulationWidget->show();
+
         // Iniciar la simulación correspondiente
         if (schedulingTypesToUse.contains("Priority")) {
             runPrioritySimulation();
@@ -304,15 +356,85 @@ void SimulatorClient::onSchedulingSimClicked() {
             runSRTSimulation();
         }
     } else {
-        // Aquí se implementaría la lógica para varios algoritmos
-        QMessageBox::information(this, "Información", "Aún no tenemos la lógica para tantos :(");
-        simulationWidget->hide();
-        welcomeLabel->show();
-        chooseLabel->show();
-        scheduleButton->show();
-        syncButton->show();
+        calculateSchedulingMetrics();
     }
     
+}
+
+void SimulatorClient::calculateSchedulingMetrics() {
+    
+    fifoTitleLabel->hide();
+    fifoMetricsLabel->hide();
+    sjfTitleLabel->hide();
+    sjfMetricsLabel->hide();
+    srtTitleLabel->hide();
+    srtMetricsLabel->hide();
+    rrTitleLabel->hide();
+    rrMetricsLabel->hide();
+    priTitleLabel->hide();
+    priMetricsLabel->hide();
+
+    if (schedulingTypesToUse.contains("First In First Out")){
+        // Configurar el scheduler con los procesos
+        fifoScheduler->setProcesses(processList);
+
+        double avgWaitingTime = fifoScheduler->simulateWithoutGUI();
+        QString fifo_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(avgWaitingTime);
+        fifoMetricsLabel->setText(fifo_avgWT);
+
+        fifoTitleLabel->show();
+        fifoMetricsLabel->show();
+
+    }  if (schedulingTypesToUse.contains("Shortest Job First")){
+        // Configurar el scheduler con los procesos
+        sjfScheduler->setProcesses(processList);
+
+        double sjf_avgWT = sjfScheduler->simulateWithoutGUI();
+        QString textSJF = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(sjf_avgWT);
+        sjfMetricsLabel->setText(textSJF);
+
+        sjfTitleLabel->show();
+        sjfMetricsLabel->show();
+
+    }  if (schedulingTypesToUse.contains("Shortest Remaining Time")){
+        // Configurar el scheduler con los procesos
+        srtScheduler->setProcesses(processList);
+
+        // Obtener métrica
+        double srt_avgWT = srtScheduler->simulateWithoutGUI();
+        QString textSRT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(srt_avgWT);
+        srtMetricsLabel->setText(textSRT);
+
+        // Mostrar resultados
+        srtTitleLabel->show();
+        srtMetricsLabel->show();
+
+    } if (schedulingTypesToUse.contains("Round Robin")){
+        // Configurar el scheduler con los procesos
+        rrScheduler->setProcesses(processList);
+
+        //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
+        double avgWaitingTime = srtScheduler->simulateWithoutGUI();
+        QString rr_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(avgWaitingTime);
+        rrMetricsLabel->setText(rr_avgWT);
+
+        rrTitleLabel->show();
+        rrMetricsLabel->show();
+
+    } if (schedulingTypesToUse.contains("Priority")) {
+        // Configurar el scheduler con los procesos
+        priorityScheduler->setProcesses(processList);
+
+        //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
+        double avgWaitingTime = srtScheduler->simulateWithoutGUI();
+        QString pri_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+        priMetricsLabel->setText(pri_avgWT);
+
+        priTitleLabel->show();
+        priMetricsLabel->show();
+    }  
+
+    scheduleMetricsWidget->show();
 }
 
 void SimulatorClient::onSimulationFinished(double avgWaitingTime) {
