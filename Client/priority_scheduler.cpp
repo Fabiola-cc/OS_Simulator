@@ -199,67 +199,74 @@ Process* PriorityScheduler::getNextProcessByPriority() {
 }
 
 
+//==============================================================================
+// MOTOR DE SIMULACIÓN
+//==============================================================================
 
+/**
+ * Función principal de actualización de la simulación
+ * Se ejecuta cada ciclo del timer para avanzar la simulación
+ */
 void PriorityScheduler::updateSimulation() {
-    // Si no hay un proceso en ejecución, buscar el siguiente por prioridad
-    if (currentProcess == nullptr || currentProcess->burstTime <= 0) {
-        currentProcess = getNextProcessByPriority();
-
-        // Si no hay procesos disponibles en este momento
-        if (currentProcess == nullptr) {
-            // Verificar si quedan procesos por llegar
-            bool pendingProcesses = false;
-            for (const Process& p : processes) {
-                if (p.burstTime > 0) {
-                    pendingProcesses = true;
-                    break;
-                }
-            }
-
-            if (!pendingProcesses) {
-                // Todos los procesos han terminado
-                stopSimulation();
-                return;
-            } else {
-                // Avanzar el tiempo hasta el siguiente proceso
-                currentTime++;
-
-                // Dibujar un espacio vacío (CPU idle) en la fila única
-                int y = 30;
-                ganttScene->addRect(
-                    (currentTime - 1) * 30, y, 30, 30,
-                    QPen(Qt::black), QBrush(Qt::lightGray)
-                );
-
-                QGraphicsTextItem *idleText = ganttScene->addText("idle");
-                idleText->setPos((currentTime - 1) * 30 + 5, y + 5);
-
-                // Desplazar la vista para mostrar el ciclo actual
-                ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
-                return;
-            }
+    // ALGORITMO PREEMPTIVO: Verificar en cada ciclo si hay proceso con mayor prioridad
+    Process* highestPriorityProcess = getNextProcessByPriority();
+    
+    // Determinar si cambiar de proceso (preemption)
+    if (highestPriorityProcess != nullptr) {
+        // Cambiar proceso si:
+        // 1. No hay proceso actual ejecutándose
+        // 2. El nuevo proceso tiene mayor prioridad
+        // 3. Mismo nivel de prioridad pero llegó antes (FCFS tie-breaking)
+        if (currentProcess == nullptr || 
+            highestPriorityProcess->priority < currentProcess->priority ||
+            (highestPriorityProcess->priority == currentProcess->priority && 
+             highestPriorityProcess->arrivalTime < currentProcess->arrivalTime)) {
+            currentProcess = highestPriorityProcess;
         }
     }
 
-    // Ejecutar el proceso actual por un ciclo
+    // Verificar si no hay procesos listos para ejecutar
+    if (currentProcess == nullptr || currentProcess->burstTime <= 0) {
+        // Verificar si quedan procesos pendientes en el sistema
+        bool pendingProcesses = false;
+        for (const Process& p : processes) {
+            if (p.burstTime > 0) {
+                pendingProcesses = true;
+                break;
+            }
+        }
+
+        if (!pendingProcesses) {
+            // Simulación completa: todos los procesos han terminado
+            stopSimulation();
+            return;
+        } else {
+            // CPU idle: avanzar tiempo sin dibujar (eliminar idle time visual)
+            currentTime++;
+            return;
+        }
+    }
+
+    // EJECUCIÓN: Procesar un ciclo del proceso actual
     currentProcess->burstTime--;
 
-    // Dibujar el ciclo actual en la misma fila (y = 30)
-    int y = 30;
+    // VISUALIZACIÓN: Dibujar rectángulo del proceso en el diagrama de Gantt
+    int y = 30; // Posición vertical fija
     ganttScene->addRect(
-        currentTime * 30, y, 30, 30,
+        drawPosition * 30, y, 30, 30,
         QPen(Qt::black), QBrush(processColors[currentProcess->pid])
     );
 
-    // Añadir texto del proceso en el diagrama
+    // Añadir identificador del proceso en el rectángulo
     QGraphicsTextItem *textItem = ganttScene->addText(currentProcess->pid);
-    textItem->setPos(currentTime * 30 + 5, y + 5);
+    textItem->setPos(drawPosition * 30 + 5, y + 5);
 
-    // Si el proceso ha terminado, registrar su tiempo de finalización
+    // FINALIZACIÓN: Verificar si el proceso ha completado su ejecución
     if (currentProcess->burstTime <= 0) {
+        // Registrar tiempo de finalización
         completionTimes[currentProcess->pid] = currentTime + 1;
 
-        // Buscar el proceso original en arrivalSortedProcesses para obtener el burst original
+        // Calcular tiempo de espera usando datos originales del proceso
         auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
                                [&](const Process& p) { return p.pid == currentProcess->pid; });
 
@@ -268,27 +275,39 @@ void PriorityScheduler::updateSimulation() {
                            it->arrivalTime - it->burstTime;
             waitingTimes[currentProcess->pid] = waitTime;
         }
+        
+        // Liberar proceso actual para seleccionar el siguiente
+        currentProcess = nullptr;
     }
 
-    // Avanzar el tiempo
-    currentTime++;
+    // AVANCE: Incrementar contadores de tiempo
+    currentTime++;        // Tiempo lógico de simulación
+    drawPosition++;       // Posición de dibujo (sin espacios idle)
 
-    // Desplazar la vista para mostrar el ciclo actual
-    ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
+    // Actualizar vista para seguir la ejecución actual
+    ganttView->ensureVisible(drawPosition * 30, 0, 100, 0);
 }
 
+//==============================================================================
+// CÁLCULO DE MÉTRICAS
+//==============================================================================
 
+/**
+ * Calcula las métricas finales de la simulación
+ * Calcula tiempo de espera promedio y emite señal de finalización
+ */
 void PriorityScheduler::calculateMetrics() {
     double totalWaitingTime = 0;
     
-    // Calcular tiempo de espera para cada proceso
+    // Sumar todos los tiempos de espera individuales
     for (const QString& pid : waitingTimes.keys()) {
         totalWaitingTime += waitingTimes[pid];
     }
     
-    // Calcular tiempo de espera promedio
+    // Calcular promedio
     double avgWaitingTime = totalWaitingTime / processes.size();
     
-    // Emitir señal con resultados
+    // Notificar finalización con resultado
     emit simulationFinished(avgWaitingTime);
 }
+
