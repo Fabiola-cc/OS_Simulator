@@ -66,7 +66,11 @@ private:
     // Métricas
     QMap<QString, int> waitingTimes;
     QMap<QString, int> completionTimes;
-    
+
+    QList<Process *> organizeProcessesByPriority();
+
+    bool shouldWaitForHigherPriority();
+
     // Método para calcular el siguiente proceso a ejecutar basado en prioridad
     Process* getNextProcessByPriority();
     
