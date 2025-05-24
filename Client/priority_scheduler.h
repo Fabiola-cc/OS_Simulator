@@ -78,6 +78,11 @@ private:
     
     // Método para calcular métricas finales
     void calculateMetrics();
+
+    double simulateWithoutGUI();
+    int drawPosition; // Posición visual en el diagrama (sin idle times)
+
+
 };
 
 #endif // PRIORITY_SCHEDULER_H
