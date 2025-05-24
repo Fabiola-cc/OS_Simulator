@@ -31,6 +31,53 @@ PriorityScheduler::PriorityScheduler(QObject *parent) : QObject(parent) {
     connect(simulationTimer, &QTimer::timeout, this, &PriorityScheduler::updateSimulation);
 }
 
+
+//==============================================================================
+// CONFIGURACIÓN DE PROCESOS Y COLORES
+//==============================================================================
+
+/**
+ * Establece la lista de procesos a programar
+ * newProcesses Lista de procesos con sus características
+ */
+void PriorityScheduler::setProcesses(const QList<Process>& newProcesses) {
+    processes = newProcesses;
+    
+    // Crear copia ordenada por tiempo de llegada para referencia
+    arrivalSortedProcesses = processes;
+    std::sort(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(), 
+              [](const Process& a, const Process& b) {
+                  return a.arrivalTime < b.arrivalTime;
+              });
+    
+    // Asignar colores únicos a cada proceso para visualización
+    assignProcessColors();
+}
+
+/**
+ * Asigna colores aleatorios únicos a cada proceso
+ * Los colores generados no son demasiado claros para mejor visibilidad
+ */
+void PriorityScheduler::assignProcessColors() {
+    processColors.clear();
+    
+    for (const Process& p : processes) {
+        if (!processColors.contains(p.pid)) {
+            QColor color;
+            // Generar colores con suficiente contraste (evitar colores muy claros)
+            do {
+                color = QColor(
+                    QRandomGenerator::global()->bounded(50, 200),
+                    QRandomGenerator::global()->bounded(50, 200),
+                    QRandomGenerator::global()->bounded(50, 200)
+                );
+            } while (color.lightness() > 200);
+            
+            processColors[p.pid] = color;
+        }
+    }
+}
+
 /**
  * Configura el diagrama de Gantt para la visualización
  * view Vista gráfica donde se mostrará el diagrama
@@ -62,19 +109,6 @@ void PriorityScheduler::setupGanttChart(QGraphicsView *view) {
 }
 
 
-void PriorityScheduler::setProcesses(const QList<Process>& newProcesses) {
-    processes = newProcesses;
-    
-    // Ordena los procesos por tiempo de llegada para procesarlos en orden
-    arrivalSortedProcesses = processes;
-    std::sort(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(), 
-              [](const Process& a, const Process& b) {
-                  return a.arrivalTime < b.arrivalTime;
-              });
-    
-    // Asignar colores aleatorios a cada proceso
-    assignProcessColors();
-}
 
 void PriorityScheduler::assignProcessColors() {
     processColors.clear();
