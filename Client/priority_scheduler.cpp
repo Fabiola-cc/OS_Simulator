@@ -5,41 +5,59 @@
 #include <QRandomGenerator>
 #include <QColor>
 #include <algorithm>
-#include <climits>  // Para INT_MAX
+#include <climits> 
 
+//==============================================================================
+// CONSTRUCTOR Y CONFIGURACIÓN INICIAL
+//==============================================================================
+
+/**
+ * Constructor del programador de prioridades
+ * Inicializa todas las variables necesarias para la simulación
+ */
 PriorityScheduler::PriorityScheduler(QObject *parent) : QObject(parent) {
+    // Inicialización de componentes gráficos
     ganttScene = new QGraphicsScene(this);
     simulationTimer = new QTimer(this);
+    
+    // Inicialización de variables de estado de simulación
     currentTime = 0;
     currentProcessIndex = 0;
     simulationRunning = false;
     currentProcess = nullptr;
+    drawPosition = 0; 
     
-    // Conectar el timer a la función de actualización
+    // Conectar el timer a la función de actualización de simulación
     connect(simulationTimer, &QTimer::timeout, this, &PriorityScheduler::updateSimulation);
 }
 
+/**
+ * Configura el diagrama de Gantt para la visualización
+ * view Vista gráfica donde se mostrará el diagrama
+ */
 void PriorityScheduler::setupGanttChart(QGraphicsView *view) {
     ganttView = view;
     ganttView->setScene(ganttScene);
     ganttView->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     ganttView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     
-    // Limpiar la escena
+    // Limpiar la escena antes de configurar
     ganttScene->clear();
     
-    // Configurar una escena más compacta (una sola fila horizontal)
-    ganttScene->setSceneRect(0, 0, 5000, 100); // Altura reducida
+    // Configurar dimensiones de la escena (una sola fila horizontal compacta)
+    ganttScene->setSceneRect(0, 0, 5000, 100);
     
-    // Línea base para la fila única
-    ganttScene->addLine(0, 30, 5000, 30, QPen(Qt::white)); // línea horizontal única
+    // Dibujar línea base horizontal para la visualización
+    ganttScene->addLine(0, 30, 5000, 30, QPen(Qt::white));
 
-    // Dibujar líneas verticales y etiquetas de tiempo
+    // Dibujar líneas verticales de tiempo y etiquetas numéricas
     for (int i = 0; i <= 100; i++) {
         int x = i * 30;
-        ganttScene->addLine(x, 0, x, 60, QPen(Qt::white)); // líneas verticales
+        // Línea vertical para cada unidad de tiempo
+        ganttScene->addLine(x, 0, x, 60, QPen(Qt::white));
+        // Etiqueta numérica del tiempo
         QGraphicsTextItem *timeLabel = ganttScene->addText(QString::number(i));
-        timeLabel->setPos(x - 5, 65); // etiqueta del tiempo
+        timeLabel->setPos(x - 5, 65);
     }
 }
 
