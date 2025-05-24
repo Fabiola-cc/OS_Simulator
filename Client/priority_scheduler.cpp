@@ -109,74 +109,96 @@ void PriorityScheduler::setupGanttChart(QGraphicsView *view) {
 }
 
 
+//==============================================================================
+// CONTROL DE SIMULACIÓN
+//==============================================================================
 
-void PriorityScheduler::assignProcessColors() {
-    processColors.clear();
-    for (const Process& p : processes) {
-        if (!processColors.contains(p.pid)) {
-            // Generar color aleatorio que no sea demasiado claro
-            QColor color;
-            do {
-                color = QColor(
-                    QRandomGenerator::global()->bounded(50, 200),
-                    QRandomGenerator::global()->bounded(50, 200),
-                    QRandomGenerator::global()->bounded(50, 200)
-                );
-            } while (color.lightness() > 200);
-            
-            processColors[p.pid] = color;
-        }
-    }
-}
-
+/**
+ * Inicia la simulación del algoritmo de prioridades
+ * Resetea todas las variables y comienza la ejecución animada
+ */
 void PriorityScheduler::startSimulation() {
     if (!simulationRunning && !processes.isEmpty()) {
-        // Inicializar variables de simulación
+        // Reinicializar todas las variables de simulación
         currentTime = 0;
         currentProcessIndex = 0;
         currentProcess = nullptr;
         simulationRunning = true;
+        drawPosition = 0; // Posición para dibujo sin espacios idle
         
-        // Limpiar métricas
+        // Limpiar y reconfigurar la visualización
+        ganttScene->clear();
+        setupGanttChart(ganttView);
+        
+        // Limpiar métricas de ejecuciones anteriores
         waitingTimes.clear();
         completionTimes.clear();
         
-        // Iniciar el timer (velocidad de la animación: 500ms por ciclo)
+        // Iniciar timer de animación (500ms por ciclo de CPU)
         simulationTimer->start(500);
     }
 }
 
+/**
+ * Detiene la simulación y calcula métricas finales
+ */
 void PriorityScheduler::stopSimulation() {
     simulationTimer->stop();
     simulationRunning = false;
     
-    // Calcular y mostrar métricas finales
+    // Calcular y emitir métricas finales
     calculateMetrics();
 }
 
+//==============================================================================
+// ALGORITMO DE SELECCIÓN DE PROCESOS
+//==============================================================================
+
+/**
+ * Selecciona el siguiente proceso a ejecutar basado en prioridad
+ * Implementa algoritmo de prioridades con anticipación (preemptive)
+ * Puntero al proceso con mayor prioridad disponible, o nullptr si no hay
+ */
 Process* PriorityScheduler::getNextProcessByPriority() {
     Process* next = nullptr;
     int highestPriority = INT_MAX; // Menor número = Mayor prioridad
+    int earliestArrival = INT_MAX;
     
-    // Busca entre todos los procesos que han llegado pero no han terminado
+    // Buscar entre todos los procesos que han llegado y no han terminado
     for (int i = 0; i < processes.size(); i++) {
-        // Si el proceso ya ha llegado y no ha completado su ejecución
         if (processes[i].arrivalTime <= currentTime && processes[i].burstTime > 0) {
-            // Si tiene mayor prioridad (valor más bajo) que el actual mejor candidato
+            // Verificar si tiene mayor prioridad (valor numérico menor)
             if (processes[i].priority < highestPriority) {
                 highestPriority = processes[i].priority;
+                earliestArrival = processes[i].arrivalTime;
                 next = &processes[i];
             } 
-            // En caso de empate, el que llegó primero (FCFS)
-            else if (processes[i].priority == highestPriority && next != nullptr && 
-                     processes[i].arrivalTime < next->arrivalTime) {
+            // En caso de empate en prioridad, aplicar FCFS (First Come First Served)
+            else if (processes[i].priority == highestPriority && 
+                     processes[i].arrivalTime < earliestArrival) {
+                earliestArrival = processes[i].arrivalTime;
                 next = &processes[i];
+            }
+        }
+    }
+    
+    // OPTIMIZACIÓN: Verificar si vale la pena esperar por un proceso de mayor prioridad
+    if (next != nullptr) {
+        // Buscar procesos que lleguen en el siguiente ciclo con mayor prioridad
+        for (int i = 0; i < processes.size(); i++) {
+            if (processes[i].arrivalTime == currentTime + 1 && 
+                processes[i].burstTime > 0 && 
+                processes[i].priority < next->priority) {
+                // Es mejor esperar al proceso de mayor prioridad
+                return nullptr; // Causa CPU idle por un ciclo
             }
         }
     }
     
     return next;
 }
+
+
 
 void PriorityScheduler::updateSimulation() {
     // Si no hay un proceso en ejecución, buscar el siguiente por prioridad
