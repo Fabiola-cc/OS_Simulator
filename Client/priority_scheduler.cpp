@@ -311,3 +311,126 @@ void PriorityScheduler::calculateMetrics() {
     emit simulationFinished(avgWaitingTime);
 }
 
+
+
+//==============================================================================
+// SIMULACIÓN SIN INTERFAZ GRÁFICA
+//==============================================================================
+
+/**
+ * Ejecuta simulación completa sin visualización para obtener métricas
+ * Útil para comparar algoritmos de scheduling sin overhead gráfico
+ * Tiempo de espera promedio calculado
+ */
+double PriorityScheduler::simulateWithoutGUI() {
+    // Crear copia independiente de los procesos para simulación
+    QList<Process> simProcesses = processes;
+    
+    // Preservar burst times originales para cálculos correctos
+    QMap<QString, int> originalBurstTimes;
+    for (const Process& p : simProcesses) {
+        originalBurstTimes[p.pid] = p.burstTime;
+    }
+    
+    // Variables locales para métricas de simulación
+    QMap<QString, int> simWaitingTimes;
+    QMap<QString, int> simCompletionTimes;
+    
+    int simTime = 0;
+    Process* currentSimProcess = nullptr;
+    
+    // BUCLE PRINCIPAL DE SIMULACIÓN
+    while (true) {
+        // Seleccionar proceso con mayor prioridad disponible
+        Process* highestPriorityProcess = nullptr;
+        int highestPriority = INT_MAX;
+        int earliestArrival = INT_MAX;
+        
+        // Buscar entre procesos que han llegado y no han terminado
+        for (int i = 0; i < simProcesses.size(); i++) {
+            if (simProcesses[i].arrivalTime <= simTime && simProcesses[i].burstTime > 0) {
+                if (simProcesses[i].priority < highestPriority) {
+                    highestPriority = simProcesses[i].priority;
+                    earliestArrival = simProcesses[i].arrivalTime;
+                    highestPriorityProcess = &simProcesses[i];
+                } 
+                else if (simProcesses[i].priority == highestPriority && 
+                         simProcesses[i].arrivalTime < earliestArrival) {
+                    earliestArrival = simProcesses[i].arrivalTime;
+                    highestPriorityProcess = &simProcesses[i];
+                }
+            }
+        }
+        
+        // Verificar si es mejor esperar por proceso de mayor prioridad
+        if (highestPriorityProcess != nullptr) {
+            bool shouldWait = false;
+            for (int i = 0; i < simProcesses.size(); i++) {
+                if (simProcesses[i].arrivalTime == simTime + 1 && 
+                    simProcesses[i].burstTime > 0 && 
+                    simProcesses[i].priority < highestPriorityProcess->priority) {
+                    shouldWait = true;
+                    break;
+                }
+            }
+            
+            if (shouldWait) {
+                highestPriorityProcess = nullptr; // Forzar CPU idle
+            }
+        }
+        
+        // Asignar proceso seleccionado (algoritmo preemptivo)
+        currentSimProcess = highestPriorityProcess;
+
+        // Manejar caso sin procesos disponibles
+        if (currentSimProcess == nullptr) {
+            // Verificar si aún hay procesos pendientes en el sistema
+            bool pendingProcesses = false;
+            for (const Process& p : simProcesses) {
+                if (p.burstTime > 0) {
+                    pendingProcesses = true;
+                    break;
+                }
+            }
+
+            if (!pendingProcesses) {
+                // Simulación terminada: todos los procesos completados
+                break;
+            } else {
+                // CPU idle: avanzar tiempo y continuar
+                simTime++;
+                continue;
+            }
+        }
+
+        // Ejecutar un ciclo del proceso seleccionado
+        currentSimProcess->burstTime--;
+
+        // Verificar finalización del proceso
+        if (currentSimProcess->burstTime <= 0) {
+            // Registrar tiempo de finalización
+            simCompletionTimes[currentSimProcess->pid] = simTime + 1;
+
+            // Calcular tiempo de espera usando datos originales
+            auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
+                                   [&](const Process& p) { return p.pid == currentSimProcess->pid; });
+
+            if (it != arrivalSortedProcesses.end()) {
+                int waitTime = simCompletionTimes[currentSimProcess->pid] -
+                               it->arrivalTime - originalBurstTimes[currentSimProcess->pid];
+                simWaitingTimes[currentSimProcess->pid] = waitTime;
+            }
+        }
+
+        // Avanzar tiempo de simulación
+        simTime++;
+    }
+    
+    // Calcular tiempo de espera promedio final
+    double totalWaitingTime = 0;
+    for (const QString& pid : simWaitingTimes.keys()) {
+        totalWaitingTime += simWaitingTimes[pid];
+    }
+    
+    return totalWaitingTime / processes.size();
+}
