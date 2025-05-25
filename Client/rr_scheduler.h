@@ -19,6 +19,7 @@ public:
     void startSimulation();
     void stopSimulation();
     void setQuantum(int q);
+    double simulateWithoutGUI();
 
 signals:
     void simulationFinished(double averageWaitingTime);

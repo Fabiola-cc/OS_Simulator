@@ -121,7 +121,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     QVBoxLayout *syncLayout = new QVBoxLayout(syncOptionsWidget);
 
     // Título e instrucciones
-    titleLabel2 = new QLabel("Sincronización", this);
+    titleLabel2 = new QLabel("<b>Sincronización<b/>", this);
     instrLabel2 = new QLabel("Escoge el tipo de sincronización para trabajar", this);
     titleLabel2->setAlignment(Qt::AlignCenter);
     instrLabel2->setAlignment(Qt::AlignCenter);
@@ -150,6 +150,38 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     // Ocultar inicialmente
     syncOptionsWidget->hide();
+
+    ///////////////////////////////////////////////////////////////////
+    // Página Mutex
+
+    mutexWidget = new QWidget(this);
+    QVBoxLayout *mutexLayout = new QVBoxLayout(mutexWidget);
+
+    QLabel *mutexTitle = new QLabel("Simulación con Mutex", this);
+    mutexTitle->setAlignment(Qt::AlignCenter);
+    QFont titleFont = mutexTitle->font();
+    titleFont.setBold(true);
+    titleFont.setPointSize(14);
+    mutexTitle->setFont(titleFont);
+    mutexLayout->addWidget(mutexTitle);
+
+    QLabel *processStatus = new QLabel("Procesos: No cargado", this);
+    QLabel *resourceStatus = new QLabel("Recursos: No cargado", this);
+    QLabel *actionStatus = new QLabel("Acciones: No cargado", this);
+    mutexLayout->addWidget(processStatus);
+    mutexLayout->addWidget(resourceStatus);
+    mutexLayout->addWidget(actionStatus);
+
+    QPushButton *loadProcessesBtn = new QPushButton("Cargar archivo de Procesos (.txt)", this);
+    QPushButton *loadResourcesBtn = new QPushButton("Cargar archivo de Recursos (.txt)", this);
+    QPushButton *loadActionsBtn = new QPushButton("Cargar archivo de Acciones (.txt)", this);
+
+    mutexLayout->addWidget(loadProcessesBtn);
+    mutexLayout->addWidget(loadResourcesBtn);
+    mutexLayout->addWidget(loadActionsBtn);
+
+    mainLayout->addWidget(mutexWidget);
+    mutexWidget->hide();
     
     ///////////////////////////////////////////////////////////////////
 
@@ -172,15 +204,15 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     scheduleMetricsLayout->addWidget(sMetricsTitle);
 
     // Labels por métrica
-    fifoTitleLabel = new QLabel("First In First Out", this);
+    fifoTitleLabel = new QLabel("<b>First In First Out</b>", this);
     fifoMetricsLabel = new QLabel(this);
-    sjfTitleLabel = new QLabel("Shortest Job First", this);
+    sjfTitleLabel = new QLabel("<b>Shortest Job First</b>", this);
     sjfMetricsLabel = new QLabel(this);
-    srtTitleLabel = new QLabel("Shortest Remaining Time", this);
+    srtTitleLabel = new QLabel("<b>Shortest Remaining Time</b>", this);
     srtMetricsLabel = new QLabel(this);
-    rrTitleLabel = new QLabel("Round Robin", this);
+    rrTitleLabel = new QLabel("<b>Round Robin</b>", this);
     rrMetricsLabel = new QLabel(this);
-    priTitleLabel = new QLabel("Priority", this);
+    priTitleLabel = new QLabel("<b>Priority</b>", this);
     priMetricsLabel = new QLabel("", this);
 
     // Agregar labels a layout
@@ -247,6 +279,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     priorityScheduler = new PriorityScheduler(this);
     connect(priorityScheduler, &PriorityScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
+    
+
+    // Sincronizacion
+    connect(mutexButton, &QPushButton::clicked, this, &SimulatorClient::OnMutexClicked);
+
 }
 
 void SimulatorClient::setupSimulationWidget() {
@@ -311,6 +348,12 @@ void SimulatorClient::onReturnClicked() {
 
     scheduleOptionsWidget->hide();
     syncOptionsWidget->hide();
+}
+
+void SimulatorClient::OnMutexClicked() {
+   syncOptionsWidget->hide();
+   mutexWidget->show();
+   
 }
 
 void SimulatorClient::onCheckBoxMarked() {
@@ -412,10 +455,12 @@ void SimulatorClient::calculateSchedulingMetrics() {
     } if (schedulingTypesToUse.contains("Round Robin")){
         // Configurar el scheduler con los procesos
         rrScheduler->setProcesses(processList);
+        int quantum = quantumInput->text().toInt();
+        rrScheduler->setQuantum(quantum);
 
         //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
-        double avgWaitingTime = srtScheduler->simulateWithoutGUI();
-        QString rr_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(avgWaitingTime);
+        double rr_avgTime = rrScheduler->simulateWithoutGUI();
+        QString rr_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(rr_avgTime);
         rrMetricsLabel->setText(rr_avgWT);
 
         rrTitleLabel->show();
@@ -426,8 +471,8 @@ void SimulatorClient::calculateSchedulingMetrics() {
         priorityScheduler->setProcesses(processList);
 
         //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
-        double avgWaitingTime = srtScheduler->simulateWithoutGUI();
-        QString pri_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
+        double pr_avgWT = srtScheduler->simulateWithoutGUI();
+        QString pri_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(pr_avgWT);
         priMetricsLabel->setText(pri_avgWT);
 
         priTitleLabel->show();

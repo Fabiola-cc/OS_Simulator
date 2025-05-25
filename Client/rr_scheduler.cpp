@@ -152,3 +152,76 @@ void RoundRobinScheduler::calculateMetrics() {
         waitingTimes[p.pid] = turnaround - p.burstTime;
     }
 }
+
+double RoundRobinScheduler::simulateWithoutGUI() {
+    int time = 0;
+    QQueue<Process> queue;
+    QMap<QString, int> localRemainingBurst;
+    QMap<QString, int> localCompletionTimes;
+
+    // Inicializar burst restante
+    for (const Process& p : allProcesses) {
+        localRemainingBurst[p.pid] = p.burstTime;
+    }
+
+    QList<Process> pendingProcesses = allProcesses;
+    bool hasCurrent = false;
+    Process currentProc;
+    int localQuantumCounter = 0;
+
+    while (true) {
+        // Agregar procesos que llegan en este tiempo
+        for (auto it = pendingProcesses.begin(); it != pendingProcesses.end();) {
+            if (it->arrivalTime == time) {
+                queue.enqueue(*it);
+                it = pendingProcesses.erase(it);
+            } else {
+                ++it;
+            }
+        }
+
+        // Tomar nuevo proceso si no hay uno actual
+        if (!hasCurrent && !queue.isEmpty()) {
+            currentProc = queue.dequeue();
+            localQuantumCounter = 0;
+            hasCurrent = true;
+        }
+
+        if (hasCurrent) {
+            localRemainingBurst[currentProc.pid]--;
+            localQuantumCounter++;
+
+            if (localRemainingBurst[currentProc.pid] == 0) {
+                localCompletionTimes[currentProc.pid] = time + 1;
+                hasCurrent = false;
+            }
+            else if (localQuantumCounter >= quantum) {
+                queue.enqueue(currentProc);
+                hasCurrent = false;
+            }
+        }
+
+        // Verificar si todos terminaron
+        bool done = std::all_of(localRemainingBurst.begin(), localRemainingBurst.end(),
+                                [](int left) { return left == 0; });
+        if (done) break;
+
+        time++;
+    }
+
+    // Calcular métricas
+    QMap<QString, int> localWaitingTimes;
+    for (const Process& p : allProcesses) {
+        int turnaround = localCompletionTimes[p.pid] - p.arrivalTime;
+        localWaitingTimes[p.pid] = turnaround - p.burstTime;
+    }
+
+    double avgWaiting = 0.0;
+    if (!localWaitingTimes.isEmpty()) {
+        int total = std::accumulate(localWaitingTimes.begin(), localWaitingTimes.end(), 0,
+                                    [](int sum, int val) { return sum + val; });
+        avgWaiting = static_cast<double>(total) / localWaitingTimes.size();
+    }
+
+    return avgWaiting;
+}

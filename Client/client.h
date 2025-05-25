@@ -30,6 +30,7 @@ public slots:
     void onAddFileClicked_Resources();
     void onAddFileClicked_Actions();
     void onSimulationFinished(double avgWaitingTime);
+    void OnMutexClicked();
 
 private:
     // General
@@ -86,6 +87,7 @@ private:
     QWidget *syncOptionsWidget;
     QWidget *simulationWidget;
     QWidget *scheduleMetricsWidget;
+    QWidget *mutexWidget;
 
     // Componentes para visualización de simulación
     QGraphicsView *ganttView;
@@ -96,6 +98,10 @@ private:
     ShortestRemainingTimeScheduler *srtScheduler;
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
+
+    
+
+
    
     // Métodos privados
     void setupSimulationWidget();
