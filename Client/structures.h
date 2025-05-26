@@ -21,6 +21,11 @@ struct Process {
 struct Resource {
     QString name;
     int counter;
+        // Operador de comparación
+    bool operator==(const Resource& other) const {
+        return name == other.name && 
+               counter == other.counter;
+    }
 };
 
 struct Action {
@@ -28,6 +33,15 @@ struct Action {
     QString operation; // e.g. READ, WRITE
     QString resource;
     int cycle;
+        
+    // Operador de comparación
+    bool operator==(const Action& other) const {
+        return pid == other.pid && 
+               operation == other.operation && 
+               resource == other.resource && 
+               cycle == other.cycle;
+    }
 };
+
 
 #endif // STRUCTURES_H
