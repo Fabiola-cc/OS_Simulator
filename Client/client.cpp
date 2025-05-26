@@ -152,6 +152,56 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     syncOptionsWidget->hide();
 
     ///////////////////////////////////////////////////////////////////
+    // Página Semaphore 
+    semaphoreWidget = new QWidget(this);
+    QVBoxLayout *semaphoreLayout = new QVBoxLayout(semaphoreWidget);
+
+    QLabel *semaphoreTitle = new QLabel("Simulación con Semaphore", this);
+    semaphoreTitle->setAlignment(Qt::AlignCenter);
+    QFont semaphoreTitleFont = semaphoreTitle->font();
+    semaphoreTitleFont.setBold(true);
+    semaphoreTitleFont.setPointSize(14);
+    semaphoreTitle->setFont(semaphoreTitleFont);
+    semaphoreLayout->addWidget(semaphoreTitle);
+
+    // Labels de estado
+    semProcessStatusLabel = new QLabel("Procesos: No cargado", this);
+    semResourceStatusLabel = new QLabel("Recursos: No cargado", this);
+    semActionStatusLabel = new QLabel("Acciones: No cargado", this);
+    semaphoreLayout->addWidget(semProcessStatusLabel);
+    semaphoreLayout->addWidget(semResourceStatusLabel);
+    semaphoreLayout->addWidget(semActionStatusLabel);
+
+    // Botones para cargar archivos
+    QPushButton *loadSemProcessesBtn = new QPushButton("Cargar archivo de Procesos (.txt)", this);
+    QPushButton *loadSemResourcesBtn = new QPushButton("Cargar archivo de Recursos (.txt)", this);
+    QPushButton *loadSemActionsBtn = new QPushButton("Cargar archivo de Acciones (.txt)", this);
+
+    semaphoreLayout->addWidget(loadSemProcessesBtn);
+    semaphoreLayout->addWidget(loadSemResourcesBtn);
+    semaphoreLayout->addWidget(loadSemActionsBtn);
+
+    // Conectar botones a sus métodos
+    connect(loadSemProcessesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemProcessesClicked);
+    connect(loadSemResourcesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemResourcesClicked);
+    connect(loadSemActionsBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemActionsClicked);
+
+    // Botón para iniciar simulación
+    QPushButton *startSemSimBtn = new QPushButton("Iniciar Simulación", this);
+    semaphoreLayout->addWidget(startSemSimBtn);
+
+    // Botón para regresar
+    QPushButton *semBackButton = new QPushButton("Regresar", this);
+    semaphoreLayout->addWidget(semBackButton);
+
+    connect(semBackButton, &QPushButton::clicked, [=]() {
+        semaphoreWidget->hide();
+        syncOptionsWidget->show();
+    });
+
+    mainLayout->addWidget(semaphoreWidget);
+    semaphoreWidget->hide();
+    
     // Página Mutex
 
     mutexWidget = new QWidget(this);
@@ -230,6 +280,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     // Botón para regresar
     QPushButton *backButton = new QPushButton("Regresar al menú principal", this);
     scheduleMetricsLayout->addWidget(backButton);
+    connect(semaphoreButton, &QPushButton::clicked, this, &SimulatorClient::OnSemaphoreClicked);
 
     connect(backButton, &QPushButton::clicked, [=]() {
         scheduleMetricsWidget->hide();
@@ -285,6 +336,144 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(mutexButton, &QPushButton::clicked, this, &SimulatorClient::OnMutexClicked);
 
 }
+
+void SimulatorClient::OnSemaphoreClicked() {
+    syncOptionsWidget->hide();
+    semaphoreWidget->show();
+}
+void SimulatorClient::onLoadSemProcessesClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de procesos para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            // Limpiar lista anterior
+            syncProcessList.clear();
+            
+            QTextStream in(&file);
+            int processCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Process p;
+                    p.pid = fields[0].trimmed();
+                    p.burstTime = fields[1].trimmed().toInt();
+                    p.arrivalTime = fields[2].trimmed().toInt();
+                    p.priority = fields[3].trimmed().toInt();
+
+                    syncProcessList.append(p);
+                    processCount++;
+                }
+            }
+            file.close();
+            
+            // Actualizar label de estado
+            semProcessStatusLabel->setText(QString("Procesos: %1 cargados").arg(processCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 procesos desde el archivo.").arg(processCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
+void SimulatorClient::onLoadSemResourcesClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de recursos para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            // Limpiar lista anterior
+            syncResourceList.clear();
+            
+            QTextStream in(&file);
+            int resourceCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 2) {
+                    Resource r;
+                    r.name = fields[0].trimmed();        // name en lugar de nombre_recurso
+                    r.counter = fields[1].trimmed().toInt(); // counter en lugar de contador
+
+                    syncResourceList.append(r);
+                    resourceCount++;
+                }
+            }
+            file.close();
+            
+            // Actualizar label de estado
+            semResourceStatusLabel->setText(QString("Recursos: %1 cargados").arg(resourceCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 recursos desde el archivo.").arg(resourceCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
+void SimulatorClient::onLoadSemActionsClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de acciones para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            // Limpiar lista anterior
+            syncActionList.clear();
+            
+            QTextStream in(&file);
+            int actionCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Action a;
+                    a.pid = fields[0].trimmed();
+                    a.operation = fields[1].trimmed();  // READ o WRITE
+                    a.resource = fields[2].trimmed();
+                    a.cycle = fields[3].trimmed().toInt(); // cycle en lugar de ciclo
+
+                    syncActionList.append(a);
+                    actionCount++;
+                }
+            }
+            file.close();
+            
+            // Actualizar label de estado
+            semActionStatusLabel->setText(QString("Acciones: %1 cargadas").arg(actionCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 acciones desde el archivo.").arg(actionCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
 
 void SimulatorClient::setupSimulationWidget() {
     QVBoxLayout *simLayout = new QVBoxLayout(simulationWidget);

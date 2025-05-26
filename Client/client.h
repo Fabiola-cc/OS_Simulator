@@ -38,6 +38,9 @@ private:
     QList<Process> processList;
     QList<Resource> resources;
     QList<Action> actions;
+    QList<Process> syncProcessList;    // Para no mezclar con calendarización
+    QList<Resource> syncResourceList;
+    QList<Action> syncActionList;
 
     // Labels
     QLabel *welcomeLabel;
@@ -88,6 +91,7 @@ private:
     QWidget *simulationWidget;
     QWidget *scheduleMetricsWidget;
     QWidget *mutexWidget;
+    QWidget *semaphoreWidget;   
 
     // Componentes para visualización de simulación
     QGraphicsView *ganttView;
@@ -99,7 +103,9 @@ private:
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
 
-    
+    QLabel *semProcessStatusLabel;
+    QLabel *semResourceStatusLabel;
+    QLabel *semActionStatusLabel;
 
 
    
@@ -111,6 +117,10 @@ private:
     void runSRTSimulation();
     void runPrioritySimulation();
     void runRRSimulation();
+    void OnSemaphoreClicked();
+    void onLoadSemProcessesClicked();
+    void onLoadSemResourcesClicked();
+    void onLoadSemActionsClicked();
 };
 
 #endif // CLIENT_H
