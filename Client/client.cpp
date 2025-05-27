@@ -186,10 +186,17 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     connect(loadSemResourcesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemResourcesClicked);
     connect(loadSemActionsBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemActionsClicked);
 
-    // Botón para iniciar simulación
-    QPushButton *startSemSimBtn = new QPushButton("Iniciar Simulación", this);
-    semaphoreLayout->addWidget(startSemSimBtn);
+    QHBoxLayout *buttonLayout_4 = new QHBoxLayout();
 
+    QPushButton *startSemSimBtn = new QPushButton("Iniciar Simulación Semaforo Binario", this);
+    QPushButton *startSemSimBtn_2 = new QPushButton("Iniciar Simulación Semaforo de Conteo", this);
+
+    // Agregar botones al layout horizontal
+    buttonLayout_4->addWidget(startSemSimBtn);
+    buttonLayout_4->addWidget(startSemSimBtn_2);
+
+    // Agregar el layout horizontal al layout principal
+    semaphoreLayout->addLayout(buttonLayout_4);
     // Botón para regresar
     QPushButton *semBackButton = new QPushButton("Regresar", this);
     semaphoreLayout->addWidget(semBackButton);
