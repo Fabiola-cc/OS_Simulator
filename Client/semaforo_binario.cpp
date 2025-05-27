@@ -1,35 +1,31 @@
-struct semaphore {
-  
-    enum value(0, 1);
+#include "semaforo_binario.h"
 
-    // q contains all Process Control Blocks (PCBs)
-    // corresponding to processes got blocked
-    // while performing down operation.
-    Queue<process> q;
-
-};
-P(semaphore s)
-{
+void P(semaphore& s, const Process& process, bool& blocked) {
     if (s.value == 1) {
         s.value = 0;
+        blocked = false;
     }
     else {
-        // add the process to the waiting queue
-        q.push(P) sleep();
+        // Agregar proceso a la cola de espera
+        s.q.push(process);
+        blocked = true;
     }
 }
-V(semaphore s)
-{
-    if (s.q is empty) {
+
+Process V(semaphore& s, bool& processReleased) {
+    Process releasedProcess;
+    
+    if (s.q.empty()) {
         s.value = 1;
+        processReleased = false;
     }
     else {
-
-        // select a process from waiting queue
-        Process p = q.front();
-        // remove the process from waiting as it has been
-        // sent for CS
-        q.pop();
-        wakeup(p);
+        // Seleccionar proceso de la cola de espera
+        releasedProcess = s.q.front();
+        s.q.pop();
+        processReleased = true;
+        // El semáforo permanece en 0 ya que inmediatamente se asigna a otro proceso
     }
+    
+    return releasedProcess;
 }

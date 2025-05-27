@@ -1,36 +1,30 @@
-struct Semaphore {
+#include "semaforo_conteo.h"
 
-    int value;
-
-    // q contains all Process Control Blocks(PCBs)
-    // corresponding to processes got blocked
-    // while performing down operation.
-    Queue<process> q;
-
-};
-P(Semaphore s)
-{
+void P(Semaphore& s, const Process& process, bool& blocked) {
     s.value = s.value - 1;
     if (s.value < 0) {
-
-        // add process to queue
-        // here p is a process which is currently executing
-        q.push(p);
-        block();
+        // Agregar proceso a la cola
+        s.q.push(process);
+        blocked = true;
     }
-    else
-        return;
+    else {
+        blocked = false;
+    }
 }
 
-V(Semaphore s)
-{
+Process V(Semaphore& s, bool& processReleased) {
+    Process releasedProcess;
     s.value = s.value + 1;
+    
     if (s.value <= 0) {
-
-        // remove process p from queue
-        Process p = q.pop();
-        wakeup(p);
+        // Remover proceso de la cola
+        releasedProcess = s.q.front();
+        s.q.pop();
+        processReleased = true;
     }
-    else
-        return;
+    else {
+        processReleased = false;
+    }
+    
+    return releasedProcess;
 }
