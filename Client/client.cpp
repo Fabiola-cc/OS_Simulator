@@ -14,14 +14,14 @@
 #include <QDebug>
 
 SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
-    resize(800, 600); // Aumentamos la altura para el diagrama de Gantt
+    resize(800, 600);
     setWindowTitle("Simulator");
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
-    mainLayout->setAlignment(Qt::AlignTop); // Todo arriba pero centrado horizontalmente
-    mainLayout->setContentsMargins(50, 30, 50, 30); // Márgenes externos
-    mainLayout->setSpacing(20); // Espacio entre secciones
+    mainLayout->setAlignment(Qt::AlignTop);
+    mainLayout->setContentsMargins(50, 30, 50, 30);
+    mainLayout->setSpacing(20);
 
     // Elementos y diseño de pantalla principal
     welcomeLabel = new QLabel("¡Bienvenido!", this);
@@ -45,24 +45,20 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     ///////////////////////////////////////////////////////////////////
 
     // Elementos y diseño de pantalla de CALENDARIZACIÓN
-    // Crear contenedor
     scheduleOptionsWidget = new QWidget(this);
     QVBoxLayout *scheduleLayout = new QVBoxLayout(scheduleOptionsWidget);
 
-    // Título e instrucciones
     titleLabel1 = new QLabel("Calendarización", this);
     instrLabel1 = new QLabel("Escoge 1 o varios tipos de calendarización para trabajar", this);
     titleLabel1->setAlignment(Qt::AlignCenter);
     instrLabel1->setAlignment(Qt::AlignCenter);
 
-    // Checkboxes
     fcfsCheckBox = new QCheckBox("First In First Out", this);
     sjfCheckBox = new QCheckBox("Shortest Job First", this);
     srtCheckBox = new QCheckBox("Shortest Remaining Time", this);
     rrCheckBox = new QCheckBox("Round Robin", this);
     priorityCheckBox = new QCheckBox("Priority", this);
 
-    // Quantum
     quantumLabel = new QLabel("Quantum:", this);
     quantumInput = new QLineEdit(this);
     quantumLabel->setVisible(false);
@@ -73,12 +69,10 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
         quantumInput->setVisible(checked);
     });
 
-    // Botones
     addFileButton = new QPushButton("Añadir Archivo", this);
     schedulingSimButton = new QPushButton("Iniciar Simulación", this);
     returnButton = new QPushButton("Regresar", this);
 
-    // Agregar widgets al layout
     scheduleLayout->addWidget(titleLabel1);
     scheduleLayout->addWidget(instrLabel1);
     scheduleLayout->addWidget(fcfsCheckBox);
@@ -87,13 +81,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     scheduleLayout->addWidget(rrCheckBox);
     scheduleLayout->addWidget(priorityCheckBox);
 
-    // Quantum en layout horizontal
     QHBoxLayout *quantumLayout = new QHBoxLayout();
     quantumLayout->addWidget(quantumLabel);
     quantumLayout->addWidget(quantumInput);
     scheduleLayout->addLayout(quantumLayout);
 
-    // Botones en layout horizontal
     QHBoxLayout *buttonLayout2 = new QHBoxLayout();
     buttonLayout2->addStretch();
     buttonLayout2->addWidget(addFileButton);
@@ -107,35 +99,27 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     openFileLabel->hide();
     scheduleLayout->addWidget(openFileLabel);
 
-    // Agregar el contenedor al layout principal
     mainLayout->addWidget(scheduleOptionsWidget);
-
-    // Ocultar inicialmente
     scheduleOptionsWidget->hide();
 
     ///////////////////////////////////////////////////////////////////
 
     // Elementos y diseño de pantalla de SINCRONIZACIÓN
-    // Crear contenedor
     syncOptionsWidget = new QWidget(this);
     QVBoxLayout *syncLayout = new QVBoxLayout(syncOptionsWidget);
 
-    // Título e instrucciones
     titleLabel2 = new QLabel("<b>Sincronización<b/>", this);
     instrLabel2 = new QLabel("Escoge el tipo de sincronización para trabajar", this);
     titleLabel2->setAlignment(Qt::AlignCenter);
     instrLabel2->setAlignment(Qt::AlignCenter);
 
-    // Botones
     mutexButton = new QPushButton("Mutex Lock", this);
     semaphoreButton = new QPushButton("Semaphore", this);
     returnButton2 = new QPushButton("Regresar", this);
     
-    // Agregar widgets al layout
     syncLayout->addWidget(titleLabel2);
     syncLayout->addWidget(instrLabel2);
     
-    // Botones en layout horizontal
     QHBoxLayout *buttonLayout3 = new QHBoxLayout();
     buttonLayout3->addStretch();
     buttonLayout3->addWidget(mutexButton);
@@ -145,10 +129,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     syncLayout->addLayout(buttonLayout3);
     syncLayout->addWidget(returnButton2);
 
-    // Agregar el contenedor al layout principal
     mainLayout->addWidget(syncOptionsWidget);
-
-    // Ocultar inicialmente
     syncOptionsWidget->hide();
 
     ///////////////////////////////////////////////////////////////////
@@ -164,7 +145,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     semaphoreTitle->setFont(semaphoreTitleFont);
     semaphoreLayout->addWidget(semaphoreTitle);
 
-    // Labels de estado
     semProcessStatusLabel = new QLabel("Procesos: No cargado", this);
     semResourceStatusLabel = new QLabel("Recursos: No cargado", this);
     semActionStatusLabel = new QLabel("Acciones: No cargado", this);
@@ -172,7 +152,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     semaphoreLayout->addWidget(semResourceStatusLabel);
     semaphoreLayout->addWidget(semActionStatusLabel);
 
-    // Botones para cargar archivos
     QPushButton *loadSemProcessesBtn = new QPushButton("Cargar archivo de Procesos (.txt)", this);
     QPushButton *loadSemResourcesBtn = new QPushButton("Cargar archivo de Recursos (.txt)", this);
     QPushButton *loadSemActionsBtn = new QPushButton("Cargar archivo de Acciones (.txt)", this);
@@ -181,7 +160,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     semaphoreLayout->addWidget(loadSemResourcesBtn);
     semaphoreLayout->addWidget(loadSemActionsBtn);
 
-    // Conectar botones a sus métodos
     connect(loadSemProcessesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemProcessesClicked);
     connect(loadSemResourcesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemResourcesClicked);
     connect(loadSemActionsBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSemActionsClicked);
@@ -191,13 +169,15 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     QPushButton *startSemSimBtn = new QPushButton("Iniciar Simulación Semaforo Binario", this);
     QPushButton *startSemSimBtn_2 = new QPushButton("Iniciar Simulación Semaforo de Conteo", this);
 
-    // Agregar botones al layout horizontal
+    // Conectar los botones a los nuevos métodos
+    connect(startSemSimBtn, &QPushButton::clicked, this, &SimulatorClient::onBinarySemaphoreSimClicked);
+    connect(startSemSimBtn_2, &QPushButton::clicked, this, &SimulatorClient::onCountingSemaphoreSimClicked);
+
     buttonLayout_4->addWidget(startSemSimBtn);
     buttonLayout_4->addWidget(startSemSimBtn_2);
 
-    // Agregar el layout horizontal al layout principal
     semaphoreLayout->addLayout(buttonLayout_4);
-    // Botón para regresar
+    
     QPushButton *semBackButton = new QPushButton("Regresar", this);
     semaphoreLayout->addWidget(semBackButton);
 
@@ -210,7 +190,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     semaphoreWidget->hide();
     
     // Página Mutex
-
     mutexWidget = new QWidget(this);
     QVBoxLayout *mutexLayout = new QVBoxLayout(mutexWidget);
 
@@ -250,17 +229,23 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     
     ///////////////////////////////////////////////////////////////////
 
+    // Widget para simulación de semáforos
+    semaphoreSimulationWidget = new QWidget(this);
+    setupSemaphoreSimulationWidget();
+    mainLayout->addWidget(semaphoreSimulationWidget);
+    semaphoreSimulationWidget->hide();
+
+    ///////////////////////////////////////////////////////////////////
+
     // Widget para obtener las métricas de varios tipos de calendarización
     scheduleMetricsWidget = new QWidget(this);
 
     QVBoxLayout *scheduleMetricsLayout = new QVBoxLayout(scheduleMetricsWidget);
     
-    // Título
     QLabel *sMetricsTitle = new QLabel("Métricas de Calendarización", this);
     sMetricsTitle->setAlignment(Qt::AlignCenter);
     scheduleMetricsLayout->addWidget(sMetricsTitle);
 
-    // Labels por métrica
     fifoTitleLabel = new QLabel("<b>First In First Out</b>", this);
     fifoMetricsLabel = new QLabel(this);
     sjfTitleLabel = new QLabel("<b>Shortest Job First</b>", this);
@@ -272,7 +257,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     priTitleLabel = new QLabel("<b>Priority</b>", this);
     priMetricsLabel = new QLabel("", this);
 
-    // Agregar labels a layout
     scheduleMetricsLayout->addWidget(fifoTitleLabel);
     scheduleMetricsLayout->addWidget(fifoMetricsLabel);
     scheduleMetricsLayout->addWidget(sjfTitleLabel);
@@ -284,10 +268,8 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     scheduleMetricsLayout->addWidget(priTitleLabel);
     scheduleMetricsLayout->addWidget(priMetricsLabel);
 
-    // Botón para regresar
     QPushButton *backButton = new QPushButton("Regresar al menú principal", this);
     scheduleMetricsLayout->addWidget(backButton);
-    connect(semaphoreButton, &QPushButton::clicked, this, &SimulatorClient::OnSemaphoreClicked);
 
     connect(backButton, &QPushButton::clicked, [=]() {
         scheduleMetricsWidget->hide();
@@ -305,49 +287,52 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     setLayout(mainLayout);
 
     // Configuración de conexiones entre señales y slots
-    connect(scheduleButton, &QPushButton::clicked, this, &SimulatorClient::onScheduleClicked);   // Conectar al hacer clic
+    connect(scheduleButton, &QPushButton::clicked, this, &SimulatorClient::onScheduleClicked);
     connect(schedulingSimButton, &QPushButton::clicked, this, &SimulatorClient::onSchedulingSimClicked);
     connect(returnButton, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
     connect(addFileButton, &QPushButton::clicked, this, &SimulatorClient::onAddFileClicked_Process);
     
     connect(syncButton, &QPushButton::clicked, this, &SimulatorClient::onSyncClicked);   
     connect(returnButton2, &QPushButton::clicked, this, &SimulatorClient::onReturnClicked);
+    connect(semaphoreButton, &QPushButton::clicked, this, &SimulatorClient::OnSemaphoreClicked);
+    connect(mutexButton, &QPushButton::clicked, this, &SimulatorClient::OnMutexClicked);
     
-    // Inicilizar el scheduler de First in First Out
+    // Inicializar schedulers de calendarización
     fifoScheduler = new FiFoScheduler(this);
     connect(fifoScheduler, &FiFoScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
 
-    // Inicilizar el scheduler de Shortest Job First
     sjfScheduler = new ShortestJobFirstScheduler(this);
     connect(sjfScheduler, &ShortestJobFirstScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
 
-    // Inicilizar el scheduler de Shortest Remaining Time
     srtScheduler = new ShortestRemainingTimeScheduler(this);
     connect(srtScheduler, &ShortestRemainingTimeScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
 
-    // Inicilizar el scheduler de RoundRobin
     rrScheduler = new RoundRobinScheduler(this);
     connect(rrScheduler, &RoundRobinScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
 
-    // Inicializar el scheduler de priority
     priorityScheduler = new PriorityScheduler(this);
     connect(priorityScheduler, &PriorityScheduler::simulationFinished, 
             this, &SimulatorClient::onSimulationFinished);
     
+    // Inicializar schedulers de semáforos
+    binarySemaphoreScheduler = new BinarySemaphoreScheduler(this);
+    connect(binarySemaphoreScheduler, &BinarySemaphoreScheduler::simulationFinished,
+            this, &SimulatorClient::onSemaphoreSimulationFinished);
 
-    // Sincronizacion
-    connect(mutexButton, &QPushButton::clicked, this, &SimulatorClient::OnMutexClicked);
-
+    countingSemaphoreScheduler = new CountingSemaphoreScheduler(this);
+    connect(countingSemaphoreScheduler, &CountingSemaphoreScheduler::simulationFinished,
+            this, &SimulatorClient::onSemaphoreSimulationFinished);
 }
 
 void SimulatorClient::OnSemaphoreClicked() {
     syncOptionsWidget->hide();
     semaphoreWidget->show();
 }
+
 void SimulatorClient::onLoadSemProcessesClicked() {
     QString fileName = QFileDialog::getOpenFileName(
         this,
@@ -359,7 +344,6 @@ void SimulatorClient::onLoadSemProcessesClicked() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            // Limpiar lista anterior
             syncProcessList.clear();
             
             QTextStream in(&file);
@@ -382,7 +366,6 @@ void SimulatorClient::onLoadSemProcessesClicked() {
             }
             file.close();
             
-            // Actualizar label de estado
             semProcessStatusLabel->setText(QString("Procesos: %1 cargados").arg(processCount));
             
             QMessageBox::information(this, "Archivo cargado", 
@@ -404,7 +387,6 @@ void SimulatorClient::onLoadSemResourcesClicked() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            // Limpiar lista anterior
             syncResourceList.clear();
             
             QTextStream in(&file);
@@ -416,8 +398,8 @@ void SimulatorClient::onLoadSemResourcesClicked() {
 
                 if (fields.size() == 2) {
                     Resource r;
-                    r.name = fields[0].trimmed();        // name en lugar de nombre_recurso
-                    r.counter = fields[1].trimmed().toInt(); // counter en lugar de contador
+                    r.name = fields[0].trimmed();
+                    r.counter = fields[1].trimmed().toInt();
 
                     syncResourceList.append(r);
                     resourceCount++;
@@ -425,7 +407,6 @@ void SimulatorClient::onLoadSemResourcesClicked() {
             }
             file.close();
             
-            // Actualizar label de estado
             semResourceStatusLabel->setText(QString("Recursos: %1 cargados").arg(resourceCount));
             
             QMessageBox::information(this, "Archivo cargado", 
@@ -447,7 +428,6 @@ void SimulatorClient::onLoadSemActionsClicked() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            // Limpiar lista anterior
             syncActionList.clear();
             
             QTextStream in(&file);
@@ -460,9 +440,9 @@ void SimulatorClient::onLoadSemActionsClicked() {
                 if (fields.size() == 4) {
                     Action a;
                     a.pid = fields[0].trimmed();
-                    a.operation = fields[1].trimmed();  // READ o WRITE
+                    a.operation = fields[1].trimmed();
                     a.resource = fields[2].trimmed();
-                    a.cycle = fields[3].trimmed().toInt(); // cycle en lugar de ciclo
+                    a.cycle = fields[3].trimmed().toInt();
 
                     syncActionList.append(a);
                     actionCount++;
@@ -470,7 +450,6 @@ void SimulatorClient::onLoadSemActionsClicked() {
             }
             file.close();
             
-            // Actualizar label de estado
             semActionStatusLabel->setText(QString("Acciones: %1 cargadas").arg(actionCount));
             
             QMessageBox::information(this, "Archivo cargado", 
@@ -481,26 +460,118 @@ void SimulatorClient::onLoadSemActionsClicked() {
     }
 }
 
+bool SimulatorClient::validateSemaphoreData() {
+    if (syncProcessList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de procesos.");
+        return false;
+    }
+    
+    if (syncResourceList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de recursos.");
+        return false;
+    }
+    
+    if (syncActionList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de acciones.");
+        return false;
+    }
+    
+    return true;
+}
+
+void SimulatorClient::onBinarySemaphoreSimClicked() {
+    if (!validateSemaphoreData()) {
+        return;
+    }
+
+    // Ocultar pantalla actual y mostrar simulación
+    semaphoreWidget->hide();
+    semaphoreSimulationWidget->show();
+
+    // Configurar el scheduler
+    binarySemaphoreScheduler->setProcesses(syncProcessList);
+    binarySemaphoreScheduler->setResources(syncResourceList);
+    binarySemaphoreScheduler->setActions(syncActionList);
+    binarySemaphoreScheduler->setupGanttChart(semaphoreGanttView);
+    
+    // Iniciar simulación
+    binarySemaphoreScheduler->startSimulation();
+}
+
+void SimulatorClient::onCountingSemaphoreSimClicked() {
+    if (!validateSemaphoreData()) {
+        return;
+    }
+
+    // Ocultar pantalla actual y mostrar simulación
+    semaphoreWidget->hide();
+    semaphoreSimulationWidget->show();
+
+    // Configurar el scheduler
+    countingSemaphoreScheduler->setProcesses(syncProcessList);
+    countingSemaphoreScheduler->setResources(syncResourceList);
+    countingSemaphoreScheduler->setActions(syncActionList);
+    countingSemaphoreScheduler->setupGanttChart(semaphoreGanttView);
+    
+    // Iniciar simulación
+    countingSemaphoreScheduler->startSimulation();
+}
+
+void SimulatorClient::onSemaphoreSimulationFinished(double avgExecutionTime) {
+    QString metrics = QString("Tiempo promedio de ejecución: %1 unidades de tiempo").arg(avgExecutionTime);
+    semaphoreMetricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación de Semáforo completada", 
+                           "La simulación ha finalizado.\n" + metrics);
+}
+
+void SimulatorClient::setupSemaphoreSimulationWidget() {
+    QVBoxLayout *semSimLayout = new QVBoxLayout(semaphoreSimulationWidget);
+    
+    // Título de la simulación
+    QLabel *semSimTitle = new QLabel("Simulación de Sincronización con Semáforos", this);
+    semSimTitle->setAlignment(Qt::AlignCenter);
+    QFont font = semSimTitle->font();
+    font.setBold(true);
+    font.setPointSize(14);
+    semSimTitle->setFont(font);
+    semSimLayout->addWidget(semSimTitle);
+    
+    // Vista para el diagrama de Gantt de semáforos
+    semaphoreGanttView = new QGraphicsView(this);
+    semaphoreGanttView->setFixedHeight(220);
+    semSimLayout->addWidget(semaphoreGanttView);
+    
+    // Etiqueta para mostrar métricas
+    semaphoreMetricsLabel = new QLabel(this);
+    semaphoreMetricsLabel->setAlignment(Qt::AlignCenter);
+    semSimLayout->addWidget(semaphoreMetricsLabel);
+    
+    // Botón para regresar
+    QPushButton *semBackButton = new QPushButton("Regresar al menú de semáforos", this);
+    semSimLayout->addWidget(semBackButton);
+    
+    connect(semBackButton, &QPushButton::clicked, [=]() {
+        semaphoreSimulationWidget->hide();
+        semaphoreWidget->show();
+    });
+}
 
 void SimulatorClient::setupSimulationWidget() {
     QVBoxLayout *simLayout = new QVBoxLayout(simulationWidget);
     
-    // Título de la simulación
     QLabel *simTitle = new QLabel("Simulación de Calendarización", this);
     simTitle->setAlignment(Qt::AlignCenter);
     simLayout->addWidget(simTitle);
     
-    // Vista para el diagrama de Gantt
     ganttView = new QGraphicsView(this);
     ganttView->setFixedHeight(120);
     simLayout->addWidget(ganttView);
     
-    // Etiqueta para mostrar métricas
     metricsLabel = new QLabel(this);
     metricsLabel->setAlignment(Qt::AlignCenter);
     simLayout->addWidget(metricsLabel);
     
-    // Botón para regresar
     QPushButton *backButton = new QPushButton("Regresar al menú principal", this);
     simLayout->addWidget(backButton);
     
@@ -513,9 +584,7 @@ void SimulatorClient::setupSimulationWidget() {
     });
 }
 
-// lógica cuando el botón "Calendarización" es presionado
 void SimulatorClient::onScheduleClicked() {
-    // Ocultar controles iniciales
     welcomeLabel->hide();
     chooseLabel->hide();
     scheduleButton->hide();
@@ -524,9 +593,7 @@ void SimulatorClient::onScheduleClicked() {
     scheduleOptionsWidget->show();
 }
 
-// lógica cuando el botón "Sincronización" es presionado
 void SimulatorClient::onSyncClicked() {
-    // Ocultar controles inciales
     welcomeLabel->hide();
     chooseLabel->hide();
     scheduleButton->hide();
@@ -536,7 +603,6 @@ void SimulatorClient::onSyncClicked() {
 }
 
 void SimulatorClient::onReturnClicked() {
-    // Mostrar controles inciales
     welcomeLabel->show();
     chooseLabel->show();
     scheduleButton->show();
@@ -549,11 +615,10 @@ void SimulatorClient::onReturnClicked() {
 void SimulatorClient::OnMutexClicked() {
    syncOptionsWidget->hide();
    mutexWidget->show();
-   
 }
 
 void SimulatorClient::onCheckBoxMarked() {
-    schedulingTypesToUse.clear(); // Limpiar la lista primero
+    schedulingTypesToUse.clear();
     
     if (fcfsCheckBox->isChecked()) schedulingTypesToUse.append("First In First Out");
     if (sjfCheckBox->isChecked()) schedulingTypesToUse.append("Shortest Job First");
@@ -575,14 +640,11 @@ void SimulatorClient::onSchedulingSimClicked() {
         return;
     }
     
-    // Ocultar pantalla de opciones
     scheduleOptionsWidget->hide();
 
     if (schedulingTypesToUse.length() == 1) {
-        // Mostrar pantalla de simulación
         simulationWidget->show();
 
-        // Iniciar la simulación correspondiente
         if (schedulingTypesToUse.contains("Priority")) {
             runPrioritySimulation();
         } else if (schedulingTypesToUse.contains("Round Robin")){
@@ -597,11 +659,9 @@ void SimulatorClient::onSchedulingSimClicked() {
     } else {
         calculateSchedulingMetrics();
     }
-    
 }
 
 void SimulatorClient::calculateSchedulingMetrics() {
-    
     fifoTitleLabel->hide();
     fifoMetricsLabel->hide();
     sjfTitleLabel->hide();
@@ -614,63 +674,48 @@ void SimulatorClient::calculateSchedulingMetrics() {
     priMetricsLabel->hide();
 
     if (schedulingTypesToUse.contains("First In First Out")){
-        // Configurar el scheduler con los procesos
         fifoScheduler->setProcesses(processList);
-
         double avgWaitingTime = fifoScheduler->simulateWithoutGUI();
         QString fifo_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(avgWaitingTime);
         fifoMetricsLabel->setText(fifo_avgWT);
-
         fifoTitleLabel->show();
         fifoMetricsLabel->show();
-
-    }  if (schedulingTypesToUse.contains("Shortest Job First")){
-        // Configurar el scheduler con los procesos
+    }
+    
+    if (schedulingTypesToUse.contains("Shortest Job First")){
         sjfScheduler->setProcesses(processList);
-
         double sjf_avgWT = sjfScheduler->simulateWithoutGUI();
         QString textSJF = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(sjf_avgWT);
         sjfMetricsLabel->setText(textSJF);
-
         sjfTitleLabel->show();
         sjfMetricsLabel->show();
-
-    }  if (schedulingTypesToUse.contains("Shortest Remaining Time")){
-        // Configurar el scheduler con los procesos
+    }
+    
+    if (schedulingTypesToUse.contains("Shortest Remaining Time")){
         srtScheduler->setProcesses(processList);
-
-        // Obtener métrica
         double srt_avgWT = srtScheduler->simulateWithoutGUI();
         QString textSRT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(srt_avgWT);
         srtMetricsLabel->setText(textSRT);
-
-        // Mostrar resultados
         srtTitleLabel->show();
         srtMetricsLabel->show();
-
-    } if (schedulingTypesToUse.contains("Round Robin")){
-        // Configurar el scheduler con los procesos
+    }
+    
+    if (schedulingTypesToUse.contains("Round Robin")){
         rrScheduler->setProcesses(processList);
         int quantum = quantumInput->text().toInt();
         rrScheduler->setQuantum(quantum);
-
-        //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
         double rr_avgTime = rrScheduler->simulateWithoutGUI();
         QString rr_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo\n").arg(rr_avgTime);
         rrMetricsLabel->setText(rr_avgWT);
-
         rrTitleLabel->show();
         rrMetricsLabel->show();
-
-    } if (schedulingTypesToUse.contains("Priority")) {
-        // Configurar el scheduler con los procesos
+    }
+    
+    if (schedulingTypesToUse.contains("Priority")) {
         priorityScheduler->setProcesses(processList);
-
-        //Obtener métrica CAMBIAR MÉTODO PARA OBTENER RESULTADO
         double pr_avgWT = srtScheduler->simulateWithoutGUI();
         QString pri_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(pr_avgWT);
         priMetricsLabel->setText(pri_avgWT);
-
         priTitleLabel->show();
         priMetricsLabel->show();
     }  
@@ -679,7 +724,6 @@ void SimulatorClient::calculateSchedulingMetrics() {
 }
 
 void SimulatorClient::onSimulationFinished(double avgWaitingTime) {
-    // Mostrar métricas
     QString metrics = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(avgWaitingTime);
     metricsLabel->setText(metrics);
     
@@ -688,64 +732,38 @@ void SimulatorClient::onSimulationFinished(double avgWaitingTime) {
 }
 
 void SimulatorClient::runFiFoSimulation() {
-    // Configurar el scheduler con los procesos
     fifoScheduler->setProcesses(processList);
-    
-    // Configurar el diagrama de Gantt
     fifoScheduler->setupGanttChart(ganttView);
-    
-    // Iniciar la simulación
     fifoScheduler->startSimulation();
 }
 
 void SimulatorClient::runSJFSimulation() {
-    // Configurar el scheduler con los procesos
     sjfScheduler->setProcesses(processList);
-    
-    // Configurar el diagrama de Gantt
     sjfScheduler->setupGanttChart(ganttView);
-    
-    // Iniciar la simulación
     sjfScheduler->startSimulation();
 }
 
 void SimulatorClient::runSRTSimulation() {
-    // Configurar el scheduler con los procesos
     srtScheduler->setProcesses(processList);
-    
-    // Configurar el diagrama de Gantt
     srtScheduler->setupGanttChart(ganttView);
-    
-    // Iniciar la simulación
     srtScheduler->startSimulation();
 }
 
 void SimulatorClient::runRRSimulation() {
-    // Configurar el scheduler con los procesos
     rrScheduler->setProcesses(processList);
     int quantum = quantumInput->text().toInt();
     rrScheduler->setQuantum(quantum);
-    
-    // Configurar el diagrama de Gantt
     rrScheduler->setupGanttChart(ganttView);
-    
-    // Iniciar la simulación
     rrScheduler->startSimulation();
 }
 
 void SimulatorClient::runPrioritySimulation() {
-    // Configurar el scheduler con los procesos
     priorityScheduler->setProcesses(processList);
-    
-    // Configurar el diagrama de Gantt
     priorityScheduler->setupGanttChart(ganttView);
-    
-    // Iniciar la simulación
     priorityScheduler->startSimulation();
 }
 
 void SimulatorClient::onAddFileClicked_Process() {
-    // Abrir diálogo para seleccionar archivo
     QString fileName = QFileDialog::getOpenFileName(
         this,
         "Seleccionar archivo de procesos",
@@ -756,7 +774,6 @@ void SimulatorClient::onAddFileClicked_Process() {
     if (!fileName.isEmpty()) {
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            // Limpiar lista de procesos anterior
             processList.clear();
             
             openFileLabel->setText("Usando el archivo: " + fileName);
@@ -779,7 +796,6 @@ void SimulatorClient::onAddFileClicked_Process() {
             }
             file.close();
             
-            // Mostrar información de los procesos cargados
             QString info = QString("Se han cargado %1 procesos desde el archivo.").arg(processList.size());
             QMessageBox::information(this, "Archivo cargado", info);
         } else {
@@ -789,10 +805,9 @@ void SimulatorClient::onAddFileClicked_Process() {
 }
 
 void SimulatorClient::onAddFileClicked_Actions() {
-    // Abrir diálogo para seleccionar archivo
     QString fileName = QFileDialog::getOpenFileName(
         this,
-        "Seleccionar archivo de procesos",
+        "Seleccionar archivo de acciones",
         "",
         "Archivos de texto (*.txt);;Todos los archivos (*)"
     );
@@ -822,10 +837,9 @@ void SimulatorClient::onAddFileClicked_Actions() {
 }
 
 void SimulatorClient::onAddFileClicked_Resources() {
-    // Abrir diálogo para seleccionar archivo
     QString fileName = QFileDialog::getOpenFileName(
         this,
-        "Seleccionar archivo de procesos",
+        "Seleccionar archivo de recursos",
         "",
         "Archivos de texto (*.txt);;Todos los archivos (*)"
     );
@@ -852,9 +866,6 @@ void SimulatorClient::onAddFileClicked_Resources() {
     }
 }
 
-/**
- * @brief Punto de entrada principal de la aplicación
- */
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     SimulatorClient client;

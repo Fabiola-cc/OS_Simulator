@@ -13,6 +13,8 @@
 #include "srt_scheduler.h"
 #include "priority_scheduler.h"
 #include "rr_scheduler.h"
+#include "binary_semaphore_scheduler.h"
+#include "counting_semaphore_scheduler.h"
 
 class SimulatorClient : public QWidget {
     Q_OBJECT
@@ -31,6 +33,9 @@ public slots:
     void onAddFileClicked_Actions();
     void onSimulationFinished(double avgWaitingTime);
     void OnMutexClicked();
+    void onBinarySemaphoreSimClicked();
+    void onCountingSemaphoreSimClicked();
+    void onSemaphoreSimulationFinished(double avgExecutionTime);
 
 private:
     // General
@@ -92,9 +97,11 @@ private:
     QWidget *scheduleMetricsWidget;
     QWidget *mutexWidget;
     QWidget *semaphoreWidget;   
+    QWidget *semaphoreSimulationWidget;
 
     // Componentes para visualización de simulación
     QGraphicsView *ganttView;
+    QGraphicsView *semaphoreGanttView;
     
     // Schedulers
     FiFoScheduler *fifoScheduler;
@@ -102,15 +109,19 @@ private:
     ShortestRemainingTimeScheduler *srtScheduler;
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
+    
+    // Semaphore Schedulers
+    BinarySemaphoreScheduler *binarySemaphoreScheduler;
+    CountingSemaphoreScheduler *countingSemaphoreScheduler;
 
     QLabel *semProcessStatusLabel;
     QLabel *semResourceStatusLabel;
     QLabel *semActionStatusLabel;
+    QLabel *semaphoreMetricsLabel;
 
-
-   
     // Métodos privados
     void setupSimulationWidget();
+    void setupSemaphoreSimulationWidget();
     void calculateSchedulingMetrics();
     void runFiFoSimulation();
     void runSJFSimulation();
@@ -121,6 +132,7 @@ private:
     void onLoadSemProcessesClicked();
     void onLoadSemResourcesClicked();
     void onLoadSemActionsClicked();
+    bool validateSemaphoreData();
 };
 
 #endif // CLIENT_H
