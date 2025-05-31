@@ -229,13 +229,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     });
 
     connect(loadProcessesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadMutProcessesClicked);
-
-   
+    connect(loadResourcesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadMutResourcesClicked);
+    connect(loadActionsBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadMutActionsClicked);
 
     mainLayout->addWidget(mutexWidget);
     mutexWidget->hide();
-
-    
     
     ///////////////////////////////////////////////////////////////////
 
@@ -678,6 +676,90 @@ void SimulatorClient::onLoadMutProcessesClicked() {
     }
 }
 
+void SimulatorClient::onLoadMutResourcesClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de recursos para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            syncResourceList.clear();
+            
+            QTextStream in(&file);
+            int resourceCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 2) {
+                    Resource r;
+                    r.name = fields[0].trimmed();
+                    r.counter = fields[1].trimmed().toInt();
+
+                    syncResourceList.append(r);
+                    resourceCount++;
+                }
+            }
+            file.close();
+            
+            mutResourceStatusLabel->setText(QString("Recursos: %1 cargados").arg(resourceCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 recursos desde el archivo.").arg(resourceCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
+void SimulatorClient::onLoadMutActionsClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de acciones para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            syncActionList.clear();
+            
+            QTextStream in(&file);
+            int actionCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Action a;
+                    a.pid = fields[0].trimmed();
+                    a.operation = fields[1].trimmed();
+                    a.resource = fields[2].trimmed();
+                    a.cycle = fields[3].trimmed().toInt();
+
+                    syncActionList.append(a);
+                    actionCount++;
+                }
+            }
+            file.close();
+            
+            mutActionStatusLabel->setText(QString("Acciones: %1 cargadas").arg(actionCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 acciones desde el archivo.").arg(actionCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
+}
+
 void SimulatorClient::onCheckBoxMarked() {
     schedulingTypesToUse.clear();
     
@@ -859,68 +941,6 @@ void SimulatorClient::onAddFileClicked_Process() {
             
             QString info = QString("Se han cargado %1 procesos desde el archivo.").arg(processList.size());
             QMessageBox::information(this, "Archivo cargado", info);
-        } else {
-            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
-        }
-    }
-}
-
-void SimulatorClient::onAddFileClicked_Actions() {
-    QString fileName = QFileDialog::getOpenFileName(
-        this,
-        "Seleccionar archivo de acciones",
-        "",
-        "Archivos de texto (*.txt);;Todos los archivos (*)"
-    );
-
-    if (!fileName.isEmpty()) {
-        QFile file(fileName);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            while (!in.atEnd()) {
-                QString line = in.readLine();
-                QStringList fields = line.split(",");
-
-                if (fields.size() == 4) {
-                    Action a;
-                    a.pid = fields[0].trimmed();
-                    a.operation = fields[1].trimmed();
-                    a.resource = fields[2].trimmed();
-                    a.cycle = fields[3].trimmed().toInt();
-                    actions.append(a);
-                }
-            }
-            file.close();    
-        } else {
-            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
-        }
-    }
-}
-
-void SimulatorClient::onAddFileClicked_Resources() {
-    QString fileName = QFileDialog::getOpenFileName(
-        this,
-        "Seleccionar archivo de recursos",
-        "",
-        "Archivos de texto (*.txt);;Todos los archivos (*)"
-    );
-
-    if (!fileName.isEmpty()) {
-        QFile file(fileName);
-        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&file);
-            while (!in.atEnd()) {
-                QString line = in.readLine();
-                QStringList fields = line.split(",");
-
-                if (fields.size() == 2) {
-                    Resource r;
-                    r.name = fields[0].trimmed();
-                    r.counter = fields[1].trimmed().toInt();
-                    resources.append(r);
-                }
-            }
-            file.close();
         } else {
             QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
         }
