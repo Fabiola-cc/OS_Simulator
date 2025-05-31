@@ -78,6 +78,8 @@ private:
     QPushButton *returnButton2;
     QPushButton *mutexButton;
     QPushButton *semaphoreButton;
+    QPushButton *mutBackButton;
+    QPushButton *startSimMut;
 
     // Checkboxes
     QCheckBox *fcfsCheckBox;
@@ -118,6 +120,11 @@ private:
     QLabel *semResourceStatusLabel;
     QLabel *semActionStatusLabel;
     QLabel *semaphoreMetricsLabel;
+    
+    // Mutex Synchronizer
+    QLabel *mutProcessStatusLabel;
+    QLabel *mutResourceStatusLabel;
+    QLabel *mutActionStatusLabel;
 
     // Métodos privados
     void setupSimulationWidget();
@@ -129,6 +136,7 @@ private:
     void runPrioritySimulation();
     void runRRSimulation();
     void OnSemaphoreClicked();
+    void onLoadMutProcessesClicked();
     void onLoadSemProcessesClicked();
     void onLoadSemResourcesClicked();
     void onLoadSemActionsClicked();

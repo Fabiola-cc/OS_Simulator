@@ -201,12 +201,13 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     mutexTitle->setFont(titleFont);
     mutexLayout->addWidget(mutexTitle);
 
-    QLabel *processStatus = new QLabel("Procesos: No cargado", this);
-    QLabel *resourceStatus = new QLabel("Recursos: No cargado", this);
-    QLabel *actionStatus = new QLabel("Acciones: No cargado", this);
-    mutexLayout->addWidget(processStatus);
-    mutexLayout->addWidget(resourceStatus);
-    mutexLayout->addWidget(actionStatus);
+    mutProcessStatusLabel = new QLabel("Procesos: No cargado", this);
+    mutResourceStatusLabel = new QLabel("Recursos: No cargado", this);
+    mutActionStatusLabel = new QLabel("Acciones: No cargado", this);
+
+    mutexLayout->addWidget(mutProcessStatusLabel);
+    mutexLayout->addWidget(mutResourceStatusLabel);
+    mutexLayout->addWidget(mutActionStatusLabel);
 
     QPushButton *loadProcessesBtn = new QPushButton("Cargar archivo de Procesos (.txt)", this);
     QPushButton *loadResourcesBtn = new QPushButton("Cargar archivo de Recursos (.txt)", this);
@@ -216,8 +217,25 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     mutexLayout->addWidget(loadResourcesBtn);
     mutexLayout->addWidget(loadActionsBtn);
 
+    QPushButton *startSimMut = new QPushButton("Iniciar Simulación con Mutex", this);
+
+    QPushButton *mutBackButton = new QPushButton("Regresar", this);
+    mutexLayout->addWidget(startSimMut);
+    mutexLayout->addWidget(mutBackButton);
+
+    connect(mutBackButton, &QPushButton::clicked, [=]() {
+        mutexWidget->hide();
+        syncOptionsWidget->show();
+    });
+
+    connect(loadProcessesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadMutProcessesClicked);
+
+   
+
     mainLayout->addWidget(mutexWidget);
     mutexWidget->hide();
+
+    
     
     ///////////////////////////////////////////////////////////////////
 
@@ -615,6 +633,49 @@ void SimulatorClient::onReturnClicked() {
 void SimulatorClient::OnMutexClicked() {
    syncOptionsWidget->hide();
    mutexWidget->show();
+}
+
+void SimulatorClient::onLoadMutProcessesClicked() {
+    QString fileName = QFileDialog::getOpenFileName(
+        this,
+        "Seleccionar archivo de procesos para sincronización",
+        "",
+        "Archivos de texto (*.txt);;Todos los archivos (*)"
+    );
+
+    if (!fileName.isEmpty()) {
+        QFile file(fileName);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            syncProcessList.clear();
+            
+            QTextStream in(&file);
+            int processCount = 0;
+            
+            while (!in.atEnd()) {
+                QString line = in.readLine();
+                QStringList fields = line.split(",");
+
+                if (fields.size() == 4) {
+                    Process p;
+                    p.pid = fields[0].trimmed();
+                    p.burstTime = fields[1].trimmed().toInt();
+                    p.arrivalTime = fields[2].trimmed().toInt();
+                    p.priority = fields[3].trimmed().toInt();
+
+                    syncProcessList.append(p);
+                    processCount++;
+                }
+            }
+            file.close();
+            
+            mutProcessStatusLabel->setText(QString("Procesos: %1 cargados").arg(processCount));
+            
+            QMessageBox::information(this, "Archivo cargado", 
+                QString("Se han cargado %1 procesos desde el archivo.").arg(processCount));
+        } else {
+            QMessageBox::warning(this, "Error", "No se pudo abrir el archivo.");
+        }
+    }
 }
 
 void SimulatorClient::onCheckBoxMarked() {
