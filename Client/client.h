@@ -29,8 +29,6 @@ public slots:
     void onReturnClicked();
     void onSchedulingSimClicked();
     void onAddFileClicked_Process();
-    void onAddFileClicked_Resources();
-    void onAddFileClicked_Actions();
     void onSimulationFinished(double avgWaitingTime);
     void OnMutexClicked();
     void onBinarySemaphoreSimClicked();
@@ -112,19 +110,17 @@ private:
     RoundRobinScheduler *rrScheduler;
     PriorityScheduler *priorityScheduler;
     
-    // Semaphore Schedulers
+    // Synchronizers
     BinarySemaphoreScheduler *binarySemaphoreScheduler;
     CountingSemaphoreScheduler *countingSemaphoreScheduler;
 
-    QLabel *semProcessStatusLabel;
-    QLabel *semResourceStatusLabel;
-    QLabel *semActionStatusLabel;
+    QLabel *syncProcessStatusLabel;
+    QLabel *syncResourceStatusLabel;
+    QLabel *syncActionStatusLabel;
+    QLabel *syncProcessStatusLabel2;
+    QLabel *syncResourceStatusLabel2;
+    QLabel *syncActionStatusLabel2;
     QLabel *semaphoreMetricsLabel;
-    
-    // Mutex Synchronizer
-    QLabel *mutProcessStatusLabel;
-    QLabel *mutResourceStatusLabel;
-    QLabel *mutActionStatusLabel;
 
     // Métodos privados
     void setupSimulationWidget();
@@ -137,10 +133,10 @@ private:
     void runRRSimulation();
     void OnSemaphoreClicked();
     void onLoadMutProcessesClicked();
-    void onLoadSemProcessesClicked();
-    void onLoadSemResourcesClicked();
-    void onLoadSemActionsClicked();
-    bool validateSemaphoreData();
+    void onLoadSyncProcessesClicked();
+    void onLoadSyncResourcesClicked();
+    void onLoadSyncActionsClicked();
+    bool validateSyncData();
 };
 
 #endif // CLIENT_H
