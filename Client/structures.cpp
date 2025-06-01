@@ -18,3 +18,12 @@ struct Action {
     QString resource;
     int cycle;
 };
+
+struct ActiveMutexAction {
+    QString pid;
+    QString resource;
+    QString actionType; // READ or WRITE
+    int startCycle;
+    int duration; // 1 ciclo para la acción
+};
+

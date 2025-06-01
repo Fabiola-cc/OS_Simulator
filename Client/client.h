@@ -15,6 +15,7 @@
 #include "rr_scheduler.h"
 #include "binary_semaphore_scheduler.h"
 #include "counting_semaphore_scheduler.h"
+#include "mutex_synchronizer.h"
 
 class SimulatorClient : public QWidget {
     Q_OBJECT
@@ -34,6 +35,9 @@ public slots:
     void onBinarySemaphoreSimClicked();
     void onCountingSemaphoreSimClicked();
     void onSemaphoreSimulationFinished(double avgExecutionTime);
+    void onMutexSimClicked();
+    void onMutexSimulationFinished(double avgExecutionTime);
+
 
 private:
     // General
@@ -98,10 +102,12 @@ private:
     QWidget *mutexWidget;
     QWidget *semaphoreWidget;   
     QWidget *semaphoreSimulationWidget;
+    QWidget *mutexSimulationWidget;
 
     // Componentes para visualización de simulación
     QGraphicsView *ganttView;
     QGraphicsView *semaphoreGanttView;
+    QGraphicsView *mutGanttView;
     
     // Schedulers
     FiFoScheduler *fifoScheduler;
@@ -113,6 +119,7 @@ private:
     // Synchronizers
     BinarySemaphoreScheduler *binarySemaphoreScheduler;
     CountingSemaphoreScheduler *countingSemaphoreScheduler;
+    MutexSynchronizer *mutexSynchronizer;
 
     QLabel *syncProcessStatusLabel;
     QLabel *syncResourceStatusLabel;
@@ -121,10 +128,12 @@ private:
     QLabel *syncResourceStatusLabel2;
     QLabel *syncActionStatusLabel2;
     QLabel *semaphoreMetricsLabel;
+    QLabel *mutMetricsLabel;
 
     // Métodos privados
     void setupSimulationWidget();
     void setupSemaphoreSimulationWidget();
+    void setupMutexSimulationWidget();
     void calculateSchedulingMetrics();
     void runFiFoSimulation();
     void runSJFSimulation();

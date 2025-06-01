@@ -236,6 +236,8 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     mainLayout->addWidget(mutexWidget);
     mutexWidget->hide();
+
+    connect(startSimMut, &QPushButton::clicked, this, &SimulatorClient::onMutexSimClicked);
     
     ///////////////////////////////////////////////////////////////////
 
@@ -252,6 +254,14 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     setupSemaphoreSimulationWidget();
     mainLayout->addWidget(semaphoreSimulationWidget);
     semaphoreSimulationWidget->hide();
+
+    ///////////////////////////////////////////////////////////////////
+
+    // Widget para simulación de semáforos
+    mutexSimulationWidget = new QWidget(this);
+    setupMutexSimulationWidget();
+    mainLayout->addWidget(mutexSimulationWidget);
+    mutexSimulationWidget->hide();
 
     ///////////////////////////////////////////////////////////////////
 
@@ -344,6 +354,10 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     countingSemaphoreScheduler = new CountingSemaphoreScheduler(this);
     connect(countingSemaphoreScheduler, &CountingSemaphoreScheduler::simulationFinished,
             this, &SimulatorClient::onSemaphoreSimulationFinished);
+
+    mutexSynchronizer = new MutexSynchronizer(this);
+    connect(mutexSynchronizer, &MutexSynchronizer::simulationFinished,
+            this, &SimulatorClient::onMutexSimulationFinished);
 }
 
 void SimulatorClient::OnSemaphoreClicked() {
@@ -538,11 +552,38 @@ void SimulatorClient::onCountingSemaphoreSimClicked() {
     countingSemaphoreScheduler->startSimulation();
 }
 
+void SimulatorClient::onMutexSimClicked() {
+    if (!validateSyncData()) {
+        return;
+    }
+
+    // Ocultar pantalla actual y mostrar simulación
+    mutexWidget->hide();
+    mutexSimulationWidget->show();
+
+    // Configurar el scheduler
+    mutexSynchronizer->setProcesses(syncProcessList);
+    mutexSynchronizer->setResources(syncResourceList);
+    mutexSynchronizer->setActions(syncActionList);
+    mutexSynchronizer->setupGanttChart(mutGanttView);
+    
+    // Iniciar simulación
+    mutexSynchronizer->startSimulation();
+}
+
 void SimulatorClient::onSemaphoreSimulationFinished(double avgExecutionTime) {
     QString metrics = QString("Tiempo promedio de ejecución: %1 unidades de tiempo").arg(avgExecutionTime);
     semaphoreMetricsLabel->setText(metrics);
     
     QMessageBox::information(this, "Simulación de Semáforo completada", 
+                           "La simulación ha finalizado.\n" + metrics);
+}
+
+void SimulatorClient::onMutexSimulationFinished(double avgExecutionTime) {
+    QString metrics = QString("Tiempo promedio de ejecución: %1 unidades de tiempo").arg(avgExecutionTime);
+    semaphoreMetricsLabel->setText(metrics);
+    
+    QMessageBox::information(this, "Simulación de Mutex completada", 
                            "La simulación ha finalizado.\n" + metrics);
 }
 
@@ -575,6 +616,38 @@ void SimulatorClient::setupSemaphoreSimulationWidget() {
     connect(semBackButton, &QPushButton::clicked, [=]() {
         semaphoreSimulationWidget->hide();
         semaphoreWidget->show();
+    });
+}
+
+void SimulatorClient::setupMutexSimulationWidget() {
+    QVBoxLayout *mutSimLayout = new QVBoxLayout(mutexSimulationWidget);
+    
+    // Título de la simulación
+    QLabel *mutSimTitle = new QLabel("Simulación de Sincronización con Mutex", this);
+    mutSimTitle->setAlignment(Qt::AlignCenter);
+    QFont font = mutSimTitle->font();
+    font.setBold(true);
+    font.setPointSize(14);
+    mutSimTitle->setFont(font);
+    mutSimLayout->addWidget(mutSimTitle);
+    
+    // Vista para el diagrama de Gantt de mutex
+    mutGanttView = new QGraphicsView(this);
+    mutGanttView->setFixedHeight(220);
+    mutSimLayout->addWidget(mutGanttView);
+    
+    // Etiqueta para mostrar métricas
+    mutMetricsLabel = new QLabel(this);
+    mutMetricsLabel->setAlignment(Qt::AlignCenter);
+    mutSimLayout->addWidget(mutMetricsLabel);
+    
+    // Botón para regresar
+    QPushButton *mutBackButton = new QPushButton("Regresar al menú de Mutex", this);
+    mutSimLayout->addWidget(mutBackButton);
+    
+    connect(mutBackButton, &QPushButton::clicked, [=]() {
+        mutexSimulationWidget->hide();
+        mutexWidget->show();
     });
 }
 

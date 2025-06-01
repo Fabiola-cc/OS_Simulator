@@ -10,7 +10,8 @@ HEADERS += client.h \
            binary_semaphore_scheduler.h \
            counting_semaphore_scheduler.h \
            semaforo_binario.h \
-           semaforo_conteo.h
+           semaforo_conteo.h \
+           mutex_synchronizer.h
 
 SOURCES += client.cpp \
            priority_scheduler.cpp \
@@ -21,4 +22,5 @@ SOURCES += client.cpp \
            binary_semaphore_scheduler.cpp \
            counting_semaphore_scheduler.cpp \
            semaforo_binario.cpp \
-           semaforo_conteo.cpp
+           semaforo_conteo.cpp \
+           mutex_synchronizer.cpp

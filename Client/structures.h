@@ -43,5 +43,13 @@ struct Action {
     }
 };
 
+struct ActiveMutexAction {
+    QString pid;
+    QString resource;
+    QString actionType; // READ or WRITE
+    int startCycle;
+    int duration;
+};
+
 
 #endif // STRUCTURES_H
