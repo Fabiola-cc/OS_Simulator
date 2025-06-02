@@ -9,6 +9,7 @@
 #include <QMap>
 #include <QString>
 #include <QColor>
+#include <QSet>
 #include "structures.h"
 
 class MutexSynchronizer : public QObject {
@@ -33,6 +34,7 @@ private slots:
     int processIndexByPid(const QString& pid) const;
 
 private:
+    QSet<QString> blockedLockProcesses;
     QGraphicsScene *ganttScene;
     QGraphicsView *ganttView;
     QTimer *simulationTimer;
@@ -41,6 +43,7 @@ private:
     QList<Process> processes;
     QList<Resource> resources;
     QList<Action> actions;
+    QString currentMutexOwner; 
 
     QQueue<Process> readyQueue;
     QQueue<Process> blockedQueue;

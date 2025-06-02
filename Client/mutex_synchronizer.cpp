@@ -5,6 +5,19 @@
 #include <QRandomGenerator>
 #include <QColor>
 #include <algorithm>
+#include <pthread.h>
+#include <unistd.h>  
+#include <iostream>
+#include <QSet>
+
+pthread_mutex_t globalMutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct ThreadArgs {
+    Process* process;
+    MutexSynchronizer* synchronizer;
+};
+
+
 
 MutexSynchronizer::MutexSynchronizer(QObject *parent) : QObject(parent) {
     ganttScene = new QGraphicsScene(this);
@@ -23,22 +36,30 @@ void MutexSynchronizer::setupGanttChart(QGraphicsView *view) {
     ganttView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 
     ganttScene->clear();
-    ganttScene->setSceneRect(0, 0, 5000, 200);
+
+    int sceneHeight = 30 + processes.size() * 40 + 40; // extra 40 for time labels
+    ganttScene->setSceneRect(0, 0, 5000, sceneHeight);
 
     for (int i = 0; i < processes.size(); i++) {
         int y = 30 + i * 40;
         ganttScene->addLine(0, y, 5000, y, QPen(Qt::white));
-        QGraphicsTextItem *processLabel = ganttScene->addText(processes[i].pid);
+
+        QString pidText = processes[i].pid; // use directly if already QString
+        QGraphicsTextItem *processLabel = ganttScene->addText(pidText);
         processLabel->setPos(-25, y - 15);
     }
 
+    int timeLabelY = 30 + processes.size() * 40; // position below last line
     for (int i = 0; i <= 100; i++) {
         int x = i * 30;
-        ganttScene->addLine(x, 0, x, 200, QPen(Qt::white));
+        ganttScene->addLine(x, 0, x, sceneHeight, QPen(Qt::white));
+
         QGraphicsTextItem *timeLabel = ganttScene->addText(QString::number(i));
-        timeLabel->setPos(x - 5, 210);
+        timeLabel->setPos(x - 5, timeLabelY);
     }
 }
+
+
 
 void MutexSynchronizer::setProcesses(const QList<Process>& newProcesses) {
     processes = newProcesses;
@@ -73,6 +94,16 @@ void MutexSynchronizer::assignProcessColors() {
     }
 }
 
+int MutexSynchronizer::processIndexByPid(const QString& pid) const {
+    for (int i = 0; i < processes.size(); ++i) {
+        if (processes[i].pid == pid) {
+            return i;
+        }
+    }
+    return -1; // si no lo encuentra
+}
+
+
 void MutexSynchronizer::initializeResources() {
     resourceMutexes.clear();
     for (const Resource& r : resources) {
@@ -81,195 +112,176 @@ void MutexSynchronizer::initializeResources() {
 }
 
 void MutexSynchronizer::startSimulation() {
-    currentTime = 0;
-    hasCurrentProcess = false;
-    currentProcessRemainingTime = 0;
     readyQueue.clear();
     blockedQueue.clear();
     processExecutionTimes.clear();
     processStartTimes.clear();
 
+    currentTime = 0;
 
     for (const Process& p : processes) {
         processExecutionTimes[p.pid] = 0;
         processStartTimes[p.pid] = -1;
     }
 
-    simulationTimer->start(800);
+    simulationTimer->start(800);  // cada 800 ms avanza un ciclo
 }
+
+
+
+// En tu clase MutexSynchronizer, agrega:
+// QSet<QString> blockedLockProcesses;
+
+void MutexSynchronizer::updateSimulation() {
+    bool allDone = true;
+
+    std::cout << "Tiempo actual: " << currentTime << std::endl;
+
+    for (int i = 0; i < processes.size(); ++i) {
+        Process& p = processes[i];
+
+        if (p.arrivalTime > currentTime) {
+            allDone = false;
+            std::cout << "Proceso " << p.pid.toStdString()
+                      << " aún no ha llegado (llega en t=" << p.arrivalTime << ")" << std::endl;
+            continue;
+        }
+
+        if (processExecutionTimes[p.pid] >= p.burstTime) {
+            continue;  // proceso terminado
+        }
+
+        allDone = false;
+
+        // Acción actual a evaluar
+        Action* action = nullptr;
+
+        // Si proceso está bloqueado intentando LOCK, forzamos que la acción sea LOCK
+        if (blockedLockProcesses.contains(p.pid)) {
+            static Action pendingLockAction;
+            pendingLockAction.pid = p.pid;
+            pendingLockAction.operation = "LOCK";
+            pendingLockAction.resource = ""; // Pon aquí el recurso si es necesario
+            pendingLockAction.cycle = currentTime;
+            action = &pendingLockAction;
+        } else {
+            // Buscar acción original en ciclo currentTime
+            for (Action& a : actions) {
+                if (a.pid == p.pid && a.cycle == currentTime) {
+                    action = &a;
+                    break;
+                }
+            }
+        }
+
+        bool canAdvance = false;
+        bool locked = false;
+        bool unlocked = false;
+
+        if (action) {
+            std::cout << "Proceso " << p.pid.toStdString()
+                      << " tiene acción " << action->operation.toStdString()
+                      << " en ciclo " << currentTime << std::endl;
+
+            if (action->operation == "LOCK") {
+                if (currentMutexOwner == "") {
+                    currentMutexOwner = p.pid;
+                    std::cout << "Mutex adquirido por proceso " << p.pid.toStdString() << std::endl;
+                    canAdvance = true;
+                    locked = true;
+                    blockedLockProcesses.remove(p.pid);  // Ya adquirió mutex, quita bloqueo
+                } else if (currentMutexOwner == p.pid) {
+                    // Ya tiene mutex
+                    canAdvance = true;
+                    blockedLockProcesses.remove(p.pid);  // Ya no está bloqueado
+                } else {
+                    std::cout << "Mutex ocupado por proceso "
+                              << currentMutexOwner.toStdString() << ", proceso "
+                              << p.pid.toStdString() << " bloqueado" << std::endl;
+                    canAdvance = false;
+                    blockedLockProcesses.insert(p.pid);  // Sigue bloqueado intentando LOCK
+                }
+            } else if (action->operation == "WRITE") {
+                if (currentMutexOwner == p.pid) {
+                    canAdvance = true;
+                } else {
+                    std::cout << "Proceso " << p.pid.toStdString()
+                              << " no tiene mutex, no puede escribir" << std::endl;
+                    canAdvance = false;
+                }
+            } else if (action->operation == "UNLOCK") {
+                if (currentMutexOwner == p.pid) {
+                    currentMutexOwner = "";
+                    std::cout << "Mutex liberado por proceso " << p.pid.toStdString() << std::endl;
+                    canAdvance = true;
+                    unlocked = true;
+                } else {
+                    canAdvance = false;
+                }
+            } else {
+                // otras acciones o sin impacto en mutex
+                canAdvance = true;
+            }
+        } else {
+            // No hay acción, puede avanzar si mutex libre o si es dueño
+            canAdvance = true;
+        }
+
+        if (canAdvance) {
+            if (locked){
+                int x = currentTime * 30;
+                int y = 30 + i * 40;
+                QColor color = Qt::green;
+                ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
+                ganttScene->addText("L")->setPos(x + 5, y + 5);
+            }
+            else if (unlocked){
+                int x = currentTime * 30;
+                int y = 30 + i * 40;
+                QColor color = Qt::blue;
+                ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
+                ganttScene->addText("U")->setPos(x + 5, y + 5);
+            }
+            else{
+                int x = currentTime * 30;
+                int y = 30 + i * 40;
+                QColor color = processColors[p.pid];
+                ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
+                ganttScene->addText(p.pid)->setPos(x + 5, y + 5);
+            }
+         
+            processExecutionTimes[p.pid]++;
+            std::cout << "Ejecutando proceso " << p.pid.toStdString()
+                      << ", ciclo " << processExecutionTimes[p.pid] << "/"
+                      << p.burstTime << std::endl;
+        } else {
+            int x = currentTime * 30;
+            int y = 30 + i * 40;
+
+            QColor color = Qt::red;
+            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
+            ganttScene->addText("B")->setPos(x + 5, y + 5);
+
+            std::cout << "Proceso " << p.pid.toStdString()
+                      << " no avanza en ciclo " << currentTime << std::endl;
+        }
+    }
+
+    if (allDone) {
+        std::cout << "Todos los procesos terminaron. Deteniendo simulación." << std::endl;
+        simulationTimer->stop();
+        calculateMetrics();
+    }
+
+    currentTime++;  // avanza tiempo global al final
+}
+
 
 void MutexSynchronizer::stopSimulation() {
     simulationTimer->stop();
     calculateMetrics();
 }
 
-void MutexSynchronizer::updateSimulation() {
-    for (const Process& p : processes) {
-        if (p.arrivalTime == currentTime) {
-            readyQueue.enqueue(p);
-            if (processStartTimes[p.pid] == -1) {
-                processStartTimes[p.pid] = currentTime;
-            }
-        }
-    }
-
-    processActions();
-
-    if (!hasCurrentProcess && !readyQueue.isEmpty()) {
-        currentProcess = readyQueue.dequeue();
-        currentProcessRemainingTime = currentProcess.burstTime;
-        hasCurrentProcess = true;
-    }
-
-    if (hasCurrentProcess) {
-        executeCurrentProcess();
-    }
-
-    bool allDone = true;
-    for (const Process& p : processes) {
-        if (processExecutionTimes[p.pid] < p.burstTime) {
-            allDone = false;
-            break;
-        }
-    }
-
-    if (allDone && readyQueue.isEmpty() && blockedQueue.isEmpty()) {
-        stopSimulation();
-        return;
-    }
-
-    currentTime++;
-    ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
-}
-
-void MutexSynchronizer::processActions() {
-    // Primero, libera mutex de acciones que terminaron este ciclo
-    for (int i = activeMutexActions.size() - 1; i >= 0; i--) {
-        ActiveMutexAction &ama = activeMutexActions[i];
-        if (currentTime >= ama.startCycle + ama.duration) {
-            // UNLOCK recurso
-            resourceMutexes[ama.resource] = false;
-            int processIndex = processIndexByPid(ama.pid);
-            if (processIndex != -1) {
-                int y = 30 + processIndex * 40;
-                int x = currentTime * 30;
-                ganttScene->addRect(x, y, 50, 30, QPen(Qt::black), QBrush(Qt::green));
-                ganttScene->addText("U")->setPos(x + 3, y + 5);
-            }
-            activeMutexActions.removeAt(i);
-
-            // Desbloquear primer proceso bloqueado (si hay alguno)
-            if (!blockedQueue.isEmpty()) {
-                readyQueue.enqueue(blockedQueue.dequeue());
-            }
-        }
-    }
-
-    // Procesar acciones programadas para el ciclo actual
-    for (const Action& action : actions) {
-        if (action.cycle == currentTime) {
-            handleMutexOperation(action);
-        }
-    }
-}
-
-
-
-void MutexSynchronizer::handleMutexOperation(const Action& action) {
-    Process process;
-    bool found = false;
-    for (const Process& p : processes) {
-        if (p.pid == action.pid) {
-            process = p;
-            found = true;
-            break;
-        }
-    }
-    if (!found) return;
-
-    int processIndex = processIndexByPid(action.pid);
-    if (processIndex == -1) return;
-    int y = 30 + processIndex * 40;
-    int x = currentTime * 30;
-
-    if (action.operation == "LOCK") {
-        if (!resourceMutexes[action.resource]) {
-            resourceMutexes[action.resource] = true;
-            // Registrar acción activa con duración 1 ciclo (o más si quieres)
-            activeMutexActions.append({action.pid, action.resource, action.operation, currentTime, 1});
-
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::yellow));
-            ganttScene->addText("L-" + action.resource)->setPos(x + 3, y + 5);
-        } else {
-            // Recurso ocupado -> proceso bloqueado
-            blockedQueue.enqueue(process);
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::red));
-            ganttScene->addText("B-" + action.resource)->setPos(x + 1, y + 5);
-        }
-    }
-    else if (action.operation == "UNLOCK") {
-        resourceMutexes[action.resource] = false;
-        ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::green));
-        ganttScene->addText("U-" + action.resource)->setPos(x + 3, y + 5);
-
-        // Desbloquear proceso bloqueado si hay
-        if (!blockedQueue.isEmpty()) {
-            Process unblocked = blockedQueue.dequeue();
-            readyQueue.enqueue(unblocked);
-        }
-    }
-    else if (action.operation == "READ") {
-        // Se puede leer solo si está bloqueado por el proceso o el recurso libre
-        if (!resourceMutexes[action.resource] || (resourceMutexes[action.resource] && currentProcess.pid == action.pid)) {
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::cyan));
-            ganttScene->addText("R-" + action.resource)->setPos(x + 6, y + 5);
-        } else {
-            // Bloqueo si recurso ocupado por otro
-            blockedQueue.enqueue(process);
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::red));
-            ganttScene->addText("B-" + action.resource)->setPos(x + 1, y + 5);
-        }
-    }
-    else if (action.operation == "WRITE") {
-        // Similar a READ
-        if (!resourceMutexes[action.resource] || (resourceMutexes[action.resource] && currentProcess.pid == action.pid)) {
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::magenta));
-            ganttScene->addText("W-" + action.resource)->setPos(x + 5, y + 5);
-        } else {
-            blockedQueue.enqueue(process);
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(Qt::red));
-            ganttScene->addText("B-" + action.resource)->setPos(x + 1, y + 5);
-        }
-    }
-}
-
-
-
-int MutexSynchronizer::processIndexByPid(const QString& pid) const {
-    for (int i = 0; i < processes.size(); i++) {
-        if (processes[i].pid == pid) return i;
-    }
-    return -1;
-}
-
-void MutexSynchronizer::executeCurrentProcess() {
-    if (!hasCurrentProcess) return;
-
-    currentProcessRemainingTime--;
-    processExecutionTimes[currentProcess.pid]++;
-
-    int processIndex = processIndexByPid(currentProcess.pid);
-    if (processIndex != -1) {
-        int y = 30 + processIndex * 40;
-        ganttScene->addRect(currentTime * 30, y, 30, 30,
-                            QPen(Qt::black), QBrush(processColors[currentProcess.pid]));
-        ganttScene->addText(currentProcess.pid)->setPos(currentTime * 30 + 5, y + 5);
-    }
-
-    if (currentProcessRemainingTime <= 0) {
-        hasCurrentProcess = false;
-    }
-}
 
 void MutexSynchronizer::calculateMetrics() {
     double totalExecutionTime = 0;
