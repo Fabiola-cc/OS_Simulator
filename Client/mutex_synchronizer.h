@@ -39,6 +39,9 @@ private:
     QGraphicsView *ganttView;
     QTimer *simulationTimer;
     int currentTime;
+    QGraphicsTextItem *currentTimeLabel;
+    QGraphicsTextItem *resourceStatusLabel;
+
 
     QList<Process> processes;
     QList<Resource> resources;
