@@ -861,7 +861,7 @@ void SimulatorClient::calculateSchedulingMetrics() {
     
     if (schedulingTypesToUse.contains("Priority")) {
         priorityScheduler->setProcesses(processList);
-        double pr_avgWT = srtScheduler->simulateWithoutGUI();
+        double pr_avgWT = priorityScheduler->simulateWithoutGUI();
         QString pri_avgWT = QString("Tiempo promedio de espera: %1 unidades de tiempo").arg(pr_avgWT);
         priMetricsLabel->setText(pri_avgWT);
         priTitleLabel->show();

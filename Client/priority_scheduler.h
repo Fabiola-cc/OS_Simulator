@@ -27,6 +27,7 @@ public:
     
     // Detiene la simulación
     void stopSimulation();
+    double simulateWithoutGUI();
 
 signals:
     // Señal emitida cuando la simulación termina
@@ -83,7 +84,7 @@ private:
     // Método para calcular métricas finales
     void calculateMetrics();
 
-    double simulateWithoutGUI();
+  
     int drawPosition; // Posición visual en el diagrama (sin idle times)
 
 
