@@ -514,6 +514,60 @@ bool SimulatorClient::validateSyncData() {
     return true;
 }
 
+bool SimulatorClient::validateSyncDataMutex() {
+    if (syncProcessList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de procesos.");
+        return false;
+    }
+
+    if (syncResourceList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de recursos.");
+        return false;
+    }
+
+    if (syncActionList.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe cargar un archivo de acciones.");
+        return false;
+    }
+
+    // Validar que solo haya un recurso (mutex)
+    if (syncResourceList.size() != 1) {
+        QMessageBox::warning(this, "Error", "Para sincronización tipo mutex, debe haber exactamente un recurso.");
+        return false;
+    }
+
+    QString expectedResource = syncResourceList[0].name;
+
+    // Crear conjunto de pids válidos
+    QSet<QString> validPIDs;
+    for (const Process& p : syncProcessList) {
+        validPIDs.insert(p.pid);
+    }
+
+    // Validar todas las acciones
+    for (const Action& a : syncActionList) {
+        if (a.operation != "ADQUIRE" && a.operation != "RELEASE") {
+            QMessageBox::warning(this, "Error", QString("Acción inválida: '%1'. Solo se permite ADQUIRE o RELEASE.").arg(a.operation));
+            return false;
+        }
+
+        if (!validPIDs.contains(a.pid)) {
+            QMessageBox::warning(this, "Error", QString("El proceso '%1' en las acciones no está definido en procesos.txt").arg(a.pid));
+            return false;
+        }
+
+        if (a.resource != expectedResource) {
+            QMessageBox::warning(this, "Error", QString("La acción de '%1' usa un recurso no válido ('%2'). Debe ser '%3'.")
+                                 .arg(a.pid, a.resource, expectedResource));
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+
 void SimulatorClient::onBinarySemaphoreSimClicked() {
     if (!validateSyncData()) {
         return;
@@ -553,7 +607,7 @@ void SimulatorClient::onCountingSemaphoreSimClicked() {
 }
 
 void SimulatorClient::onMutexSimClicked() {
-    if (!validateSyncData()) {
+    if (!validateSyncDataMutex()) {
         return;
     }
 

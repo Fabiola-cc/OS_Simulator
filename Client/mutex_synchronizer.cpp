@@ -36,6 +36,7 @@ void MutexSynchronizer::setupGanttChart(QGraphicsView *view) {
     ganttView->setMinimumSize(500, 300); 
     ganttView->resize(500, 300);
     ganttView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    ganttView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 
     ganttScene->clear();
 
@@ -268,22 +269,8 @@ void MutexSynchronizer::updateSimulation() {
     currentTime++;
 }
 
-
-
-
-
 void MutexSynchronizer::stopSimulation() {
     simulationTimer->stop();
-    calculateMetrics();
 }
 
 
-void MutexSynchronizer::calculateMetrics() {
-    double totalExecutionTime = 0;
-    for (const QString& pid : processExecutionTimes.keys()) {
-        totalExecutionTime += processExecutionTimes[pid];
-    }
-
-    double avgExecutionTime = totalExecutionTime / processes.size();
-    emit simulationFinished(avgExecutionTime);
-}

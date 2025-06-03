@@ -146,6 +146,7 @@ private:
     void onLoadSyncResourcesClicked();
     void onLoadSyncActionsClicked();
     bool validateSyncData();
+    bool validateSyncDataMutex();
 };
 
 #endif // CLIENT_H
