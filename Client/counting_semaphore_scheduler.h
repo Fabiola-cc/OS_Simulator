@@ -38,6 +38,15 @@ private slots:
     void updateSimulation();
 
 private:
+    // Estructura para acciones activas (que están usando recursos)
+    struct ActiveAction {
+        QString pid;
+        QString resource;
+        QString operation;
+        int startTime;
+        int endTime;
+    };
+    
     // Componentes gráficos
     QGraphicsScene *ganttScene;
     QGraphicsView *ganttView;
@@ -77,12 +86,14 @@ private:
     QMap<QString, Action> pendingActions;        // Acciones pendientes por PID
     QMap<QString, Action> currentCycleAccess;    // Accesos concedidos en el ciclo actual
     QMap<QString, Action> currentCycleWaiting;   // Procesos esperando en el ciclo actual
+    QMap<QString, ActiveAction> activeActions;   // Acciones que están usando recursos actualmente
     
     // Métodos privados principales
     void assignProcessColors();
     void initializeResources();
     void processCurrentCycleActions();
     void drawAllProcessStates();
+    void drawProcessPendingActionsInGantt(const QString& pid, int x, int startY); // NUEVA FUNCIÓN
     void updateInformationLabels();
     void updateSidePanel();
     void createProcessWidgets();

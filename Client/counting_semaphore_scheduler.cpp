@@ -33,9 +33,9 @@ void CountingSemaphoreScheduler::setupGanttChart(QGraphicsView *view) {
     
     ganttScene->clear();
     
-    // Calcular dimensiones
+    // Calcular dimensiones - AUMENTADO para acomodar sublistas
     int headerHeight = 140;
-    int processRowHeight = 50;
+    int processRowHeight = 80; // Incrementado para sublistas
     int totalHeight = headerHeight + (processes.size() * processRowHeight) + 100;
     
     ganttScene->setSceneRect(0, 0, 6000, totalHeight);
@@ -231,7 +231,7 @@ void CountingSemaphoreScheduler::createProcessWidgets() {
         
         // Label principal del proceso con información completa
         QLabel *processLabel = new QLabel();
-        QString processInfo = QString("%1 (AT:%2, BT:%3, P:%4)")
+        QString processInfo = QString("%1 | AT:%2 BT:%3 P:%4")
             .arg(p.pid)
             .arg(p.arrivalTime)
             .arg(p.burstTime)
@@ -335,23 +335,41 @@ void CountingSemaphoreScheduler::setupLegend() {
     QGraphicsTextItem *noActionText = ganttScene->addText("⚪ SIN ACCIÓN", QFont("Arial", 8));
     noActionText->setPos(475, legendY);
     noActionText->setDefaultTextColor(Qt::black);
+    
+    // Amarillo - Acción pendiente
+    ganttScene->addRect(580, legendY + 3, 20, 15, QPen(Qt::black), QBrush(QColor(255, 255, 0)));
+    QGraphicsTextItem *pendingText = ganttScene->addText("⏳ ACCIÓN PENDIENTE", QFont("Arial", 8));
+    pendingText->setPos(605, legendY);
+    pendingText->setDefaultTextColor(Qt::black);
 }
 
 void CountingSemaphoreScheduler::setupProcessRows(int startY) {
     for (int i = 0; i < processes.size(); i++) {
-        int y = startY + (i * 50);
+        int y = startY + (i * 80); // Incrementado espacio entre filas
         
         // Línea separadora
         ganttScene->addLine(0, y, 6000, y, QPen(QColor(200, 200, 200)));
         
-        // Etiqueta del proceso con fondo
-        QGraphicsRectItem *labelBg = ganttScene->addRect(5, y + 5, 80, 30, 
+        // Etiqueta del proceso con fondo Y PROPIEDADES
+        QGraphicsRectItem *labelBg = ganttScene->addRect(5, y + 5, 190, 50, // Aumentado el ancho a 190
             QPen(Qt::black), QBrush(processColors[processes[i].pid]));
         
+        // Nombre del proceso
         QGraphicsTextItem *processLabel = ganttScene->addText(
-            processes[i].pid, QFont("Arial", 10, QFont::Bold));
-        processLabel->setPos(10, y + 10);
+            processes[i].pid, QFont("Arial", 12, QFont::Bold));
+        processLabel->setPos(10, y + 8);
         processLabel->setDefaultTextColor(Qt::white);
+        
+        // Propiedades del proceso (AT, BT, Priority)
+        QString properties = QString("AT:%1 BT:%2 P:%3")
+            .arg(processes[i].arrivalTime)
+            .arg(processes[i].burstTime)
+            .arg(processes[i].priority);
+        
+        QGraphicsTextItem *propertiesLabel = ganttScene->addText(
+            properties, QFont("Arial", 9));
+        propertiesLabel->setPos(10, y + 28);
+        propertiesLabel->setDefaultTextColor(Qt::white);
     }
 }
 
@@ -377,7 +395,6 @@ void CountingSemaphoreScheduler::setupTimeGrid(int startY, int endY) {
 void CountingSemaphoreScheduler::setProcesses(const QList<Process>& newProcesses) {
     processes = newProcesses;
     assignProcessColors();
-    // Los widgets se crearán cuando se configure el panel lateral
 }
 
 void CountingSemaphoreScheduler::setResources(const QList<Resource>& newResources) {
@@ -420,10 +437,14 @@ void CountingSemaphoreScheduler::initializeResources() {
 }
 
 void CountingSemaphoreScheduler::updateSimulation() {
-    // Procesar acciones pendientes y nuevas para este ciclo
+    // Avanzar al siguiente ciclo
+    currentTime++;
+    qDebug() << "\n🔄 Iniciando ciclo" << currentTime;
+    
+    // Procesar acciones para este nuevo ciclo
     processCurrentCycleActions();
     
-    // Dibujar estados de todos los procesos para este ciclo
+    // Dibujar estados de todos los procesos para este ciclo EN EL GANTT
     drawAllProcessStates();
     
     // Actualizar información
@@ -434,11 +455,11 @@ void CountingSemaphoreScheduler::updateSimulation() {
     
     // Verificar si la simulación ha terminado
     if (checkSimulationComplete()) {
+        qDebug() << "🏁 Simulación completada en ciclo" << currentTime;
         stopSimulation();
         return;
     }
     
-    currentTime++;
     ganttView->ensureVisible((200 + currentTime * 40), 0, 100, 0);
 }
 
@@ -478,16 +499,6 @@ void CountingSemaphoreScheduler::updateSidePanel() {
         updateProcessPendingActions(p.pid);
     }
     
-    // DEBUGGING: Mostrar información de estado actual
-    qDebug() << "=== ESTADO EN TIEMPO" << currentTime << "===";
-    qDebug() << "Acciones pendientes total:" << pendingActions.size();
-    qDebug() << "Acciones en ciclo actual - acceso:" << currentCycleAccess.size();
-    qDebug() << "Acciones en ciclo actual - esperando:" << currentCycleWaiting.size();
-    
-    for (auto it = pendingActions.begin(); it != pendingActions.end(); ++it) {
-        qDebug() << "Pendiente:" << it.key() << "->" << it.value().operation << "en" << it.value().resource;
-    }
-    
     // Actualizar lista de recursos
     resourceListWidget->clear();
     for (const Resource& r : resources) {
@@ -513,7 +524,6 @@ void CountingSemaphoreScheduler::updateSidePanel() {
 
 void CountingSemaphoreScheduler::updateProcessPendingActions(const QString& pid) {
     if (!processLabels.contains(pid) || !pendingActionContainers.contains(pid)) {
-        qDebug() << "ERROR: No se encontraron widgets para" << pid;
         return;
     }
     
@@ -521,11 +531,13 @@ void CountingSemaphoreScheduler::updateProcessPendingActions(const QString& pid)
     QString state = getProcessCurrentState(pid);
     QString stateSymbol = getProcessStateSymbol(state);
     
-    // Obtener información básica del proceso
+    // Obtener información básica del proceso CON TODAS LAS PROPIEDADES
     QString processInfo = QString("%1 %2").arg(stateSymbol).arg(pid);
     for (const Process& p : processes) {
         if (p.pid == pid) {
-            processInfo += QString(" (AT:%1, BT:%2, P:%3) - %4")
+            processInfo = QString("%1 %2 | AT:%3 BT:%4 P:%5 | %6")
+                .arg(stateSymbol)
+                .arg(p.pid)
                 .arg(p.arrivalTime)
                 .arg(p.burstTime)
                 .arg(p.priority)
@@ -584,26 +596,8 @@ void CountingSemaphoreScheduler::updateProcessPendingActions(const QString& pid)
         }
     }
     
-    qDebug() << "Proceso" << pid << "tiene" << processPendingActions.size() << "acciones pendientes en tiempo" << currentTime;
-    
-    // FORZAR SIEMPRE MOSTRAR AL MENOS UNA SUBLISTA PARA P2 (TEMPORAL PARA PRUEBAS)
-    if (pid == "P2") {
-        // Crear una acción ficticia para P2 si no tiene ninguna
-        if (processPendingActions.isEmpty()) {
-            Action fakeAction;
-            fakeAction.pid = "P2";
-            fakeAction.operation = "read";
-            fakeAction.resource = "R1";
-            fakeAction.cycle = currentTime + 1;
-            processPendingActions.append(fakeAction);
-            qDebug() << "FORZANDO sublista para P2 con acción ficticia";
-        }
-    }
-    
     // Si hay acciones pendientes, mostrar el container y agregar las acciones
     if (!processPendingActions.isEmpty()) {
-        qDebug() << "Mostrando container para" << pid << "con" << processPendingActions.size() << "acciones";
-        
         for (int i = 0; i < processPendingActions.size(); i++) {
             const Action& action = processPendingActions[i];
             
@@ -661,20 +655,15 @@ void CountingSemaphoreScheduler::updateProcessPendingActions(const QString& pid)
             actionLayout->addStretch();
             
             pendingLayout->addWidget(actionWidget);
-            
-            qDebug() << "Agregada sublista para" << pid << ":" << actionText;
         }
         
         // MOSTRAR el container
         pendingContainer->show();
         pendingContainer->setVisible(true);
         pendingContainer->update();
-        
-        qDebug() << "Container MOSTRADO para" << pid;
     } else {
         // No hay acciones pendientes, ocultar el container
         pendingContainer->hide();
-        qDebug() << "Container OCULTO para" << pid << "- sin acciones pendientes";
     }
     
     // Forzar actualización del widget padre
@@ -722,83 +711,121 @@ QString CountingSemaphoreScheduler::getProcessStateSymbol(const QString& state) 
 }
 
 void CountingSemaphoreScheduler::processCurrentCycleActions() {
-    // Primero, procesar acciones pendientes
-    QMap<QString, Action> processedPendingActions;
+    qDebug() << "=== Procesando ciclo" << currentTime << "===";
     
+    // Limpiar estados del ciclo anterior al inicio
+    currentCycleAccess.clear();
+    currentCycleWaiting.clear();
+    
+    // PRIMERO: Liberar recursos de acciones que terminaron
+    for (auto it = activeActions.begin(); it != activeActions.end(); ) {
+        if (it.value().endTime <= currentTime) {
+            // Liberar recurso
+            resourceCounters[it.value().resource]++;
+            qDebug() << "Liberando recurso" << it.value().resource << "del proceso" << it.key() 
+                     << "en tiempo" << currentTime;
+            it = activeActions.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    
+    // SEGUNDO: Procesar acciones pendientes (que ya estaban esperando)
     for (auto it = pendingActions.begin(); it != pendingActions.end(); ) {
         Action pendingAction = it.value();
         QString pid = it.key();
+        
+        qDebug() << "Verificando acción pendiente de" << pid << "para recurso" << pendingAction.resource;
         
         // Verificar si el recurso está disponible ahora
         if (resourceCounters[pendingAction.resource] > 0) {
             // Conceder acceso
             resourceCounters[pendingAction.resource]--;
             currentCycleAccess[pid] = pendingAction;
-            processedPendingActions[pid] = pendingAction;
+            
+            // Registrar acción activa (durará 1 ciclo)
+            ActiveAction activeAction;
+            activeAction.pid = pid;
+            activeAction.resource = pendingAction.resource;
+            activeAction.operation = pendingAction.operation;
+            activeAction.startTime = currentTime;
+            activeAction.endTime = currentTime + 1; // Acción dura 1 ciclo
+            activeActions[pid] = activeAction;
+            
+            qDebug() << "✅ Concediendo acceso pendiente a" << pid << "para" << pendingAction.resource 
+                     << "en tiempo" << currentTime;
+            
             it = pendingActions.erase(it);
         } else {
             // Sigue esperando
             currentCycleWaiting[pid] = pendingAction;
+            qDebug() << "❌ Proceso" << pid << "sigue esperando" << pendingAction.resource 
+                     << "en tiempo" << currentTime << "(disponibles:" << resourceCounters[pendingAction.resource] << ")";
             ++it;
         }
     }
     
-    // Ahora procesar nuevas acciones para este ciclo
+    // TERCERO: Procesar nuevas acciones programadas para este ciclo
     for (const Action& action : actions) {
         if (action.cycle == currentTime) {
             QString pid = action.pid;
             
-            // Si ya procesamos una acción pendiente para este proceso
-            if (processedPendingActions.contains(pid)) {
-                Action pendingProcessed = processedPendingActions[pid];
+            qDebug() << "Nueva acción programada:" << pid << "solicita" << action.resource << "en ciclo" << currentTime;
+            
+            // Si ya procesamos una acción para este proceso en este ciclo, hacer pendiente la nueva
+            if (currentCycleAccess.contains(pid)) {
+                pendingActions[pid] = action;
+                qDebug() << "⏳ Proceso" << pid << "ya tiene acceso, poniendo nueva acción como pendiente";
+                continue;
+            }
+            
+            // Verificar si el recurso está disponible
+            if (resourceCounters[action.resource] > 0) {
+                // Conceder acceso
+                resourceCounters[action.resource]--;
+                currentCycleAccess[pid] = action;
                 
-                // Si es el mismo recurso, la nueva acción se vuelve pendiente
-                if (pendingProcessed.resource == action.resource) {
-                    pendingActions[pid] = action;
-                } else {
-                    // Diferente recurso, intentar ejecutar la nueva también
-                    if (resourceCounters[action.resource] > 0) {
-                        resourceCounters[action.resource]--;
-                        // Ya no podemos mostrar dos accesos simultáneos en la visualización
-                        // Priorizamos la acción pendiente que ya se ejecutó
-                    } else {
-                        pendingActions[pid] = action;
-                    }
-                }
+                // Registrar acción activa
+                ActiveAction activeAction;
+                activeAction.pid = pid;
+                activeAction.resource = action.resource;
+                activeAction.operation = action.operation;
+                activeAction.startTime = currentTime;
+                activeAction.endTime = currentTime + 1; // Acción dura 1 ciclo
+                activeActions[pid] = activeAction;
+                
+                qDebug() << "✅ Concediendo acceso nuevo a" << pid << "para" << action.resource 
+                         << "en tiempo" << currentTime;
             } else {
-                // No hay acción pendiente, procesar esta acción
-                if (resourceCounters[action.resource] > 0) {
-                    // Conceder acceso
-                    resourceCounters[action.resource]--;
-                    currentCycleAccess[pid] = action;
-                } else {
-                    // Recurso no disponible, hacer pendiente
-                    pendingActions[pid] = action;
-                    currentCycleWaiting[pid] = action;
-                }
+                // Recurso no disponible, hacer pendiente
+                pendingActions[pid] = action;
+                currentCycleWaiting[pid] = action;
+                qDebug() << "❌ Proceso" << pid << "esperando" << action.resource 
+                         << "en tiempo" << currentTime << "(recurso no disponible, disponibles:" 
+                         << resourceCounters[action.resource] << ")";
             }
         }
     }
+    
+    qDebug() << "Estado final del ciclo" << currentTime << ":";
+    qDebug() << "- Accesos concedidos:" << currentCycleAccess.size();
+    qDebug() << "- Procesos esperando:" << currentCycleWaiting.size();
+    qDebug() << "- Acciones pendientes totales:" << pendingActions.size();
+    
+    for (const Resource& r : resources) {
+        qDebug() << "- Recurso" << r.name << ":" << resourceCounters[r.name] << "/" << r.counter << "disponibles";
+    }
 }
 
+
 void CountingSemaphoreScheduler::drawAllProcessStates() {
-    // Limpiar estados del ciclo anterior
-    currentCycleAccess.clear();
-    currentCycleWaiting.clear();
+    // NO procesar acciones aquí - ya se procesaron en processCurrentCycleActions()
     
-    // Liberar todos los recursos al inicio del ciclo (recursos se liberan automáticamente)
-    for (const Resource& r : resources) {
-        resourceCounters[r.name] = r.counter;
-    }
-    
-    // Procesar acciones para este ciclo
-    processCurrentCycleActions();
-    
-    // Dibujar estado de cada proceso EN EL GANTT SOLAMENTE
+    // Solo dibujar el estado actual de cada proceso EN EL GANTT
     for (int i = 0; i < processes.size(); i++) {
         const Process& p = processes[i];
         int x = 200 + (currentTime * 40);
-        int y = 140 + (i * 50) + 10;
+        int y = 140 + (i * 80) + 10;
         
         QColor stateColor;
         QString stateText;
@@ -833,7 +860,7 @@ void CountingSemaphoreScheduler::drawAllProcessStates() {
                 .arg(currentTime);
         }
         
-        // Dibujar rectángulo del estado EN EL GANTT
+        // Dibujar rectángulo del estado principal EN EL GANTT
         QGraphicsRectItem *stateRect = ganttScene->addRect(x, y, 35, 25, 
             QPen(Qt::black, 2), QBrush(stateColor));
         stateRect->setToolTip(tooltip);
@@ -843,9 +870,84 @@ void CountingSemaphoreScheduler::drawAllProcessStates() {
             stateText, QFont("Arial", 10, QFont::Bold));
         symbolText->setPos(x + 8, y + 5);
         symbolText->setDefaultTextColor(Qt::black);
+        
+        // Dibujar sublistas de acciones pendientes
+        drawProcessPendingActionsInGantt(p.pid, x, y + 30);
+    }
+}
+
+void CountingSemaphoreScheduler::drawProcessPendingActionsInGantt(const QString& pid, int x, int startY) {
+    // Obtener todas las acciones pendientes para este proceso
+    QList<Action> processPendingActions;
+    
+    // Buscar en pendingActions (acciones que están esperando recursos)
+    for (auto it = pendingActions.begin(); it != pendingActions.end(); ++it) {
+        if (it.key() == pid) {
+            processPendingActions.append(it.value());
+        }
     }
     
-    // NOTA: Las sublistas se manejan SOLO en el panel lateral, no aquí
+    // También buscar acciones futuras que aún no han llegado su tiempo
+    for (const Action& action : actions) {
+        if (action.pid == pid && action.cycle > currentTime) {
+            processPendingActions.append(action);
+            // Limitar a las próximas 3 acciones para no saturar el diagrama
+            if (processPendingActions.size() >= 3) break;
+        }
+    }
+    
+    // Si hay acciones pendientes, dibujarlas como sublistas
+    if (!processPendingActions.isEmpty()) {
+        int subListY = startY;
+        
+        // Dibujar fondo de la sublista
+        QGraphicsRectItem *subListBg = ganttScene->addRect(x - 2, subListY - 2, 
+            39, (processPendingActions.size() * 15) + 4, 
+            QPen(QColor(255, 193, 7), 2), QBrush(QColor(255, 248, 225)));
+        subListBg->setToolTip(QString("Acciones pendientes para %1").arg(pid));
+        
+        // Dibujar cada acción pendiente
+        for (int j = 0; j < processPendingActions.size(); j++) {
+            const Action& action = processPendingActions[j];
+            int actionY = subListY + (j * 15);
+            
+            QColor actionColor;
+            QString actionSymbol;
+            QString actionTooltip;
+            
+            if (action.cycle <= currentTime) {
+                // Acción que está esperando recursos
+                actionColor = QColor(255, 193, 7); // Amarillo
+                actionSymbol = "⏳";
+                actionTooltip = QString("Proceso: %1\nEsperando recurso: %2\nOperación: %3")
+                    .arg(pid)
+                    .arg(action.resource)
+                    .arg(action.operation);
+            } else {
+                // Acción programada para el futuro
+                actionColor = QColor(108, 117, 125); // Gris
+                actionSymbol = "📅";
+                actionTooltip = QString("Proceso: %1\nProgramada para t=%2\nRecurso: %3\nOperación: %4")
+                    .arg(pid)
+                    .arg(action.cycle)
+                    .arg(action.resource)
+                    .arg(action.operation);
+            }
+            
+            // Dibujar rectángulo pequeño para la acción pendiente
+            QGraphicsRectItem *actionRect = ganttScene->addRect(x, actionY, 35, 12, 
+                QPen(Qt::black, 1), QBrush(actionColor));
+            actionRect->setToolTip(actionTooltip);
+            
+            // Dibujar símbolo o texto de la acción
+            QGraphicsTextItem *actionText = ganttScene->addText(
+                QString("%1:%2").arg(action.resource).arg(action.operation.left(1).toUpper()), 
+                QFont("Arial", 7));
+            actionText->setPos(x + 2, actionY);
+            actionText->setDefaultTextColor(Qt::black);
+            actionText->setToolTip(actionTooltip);
+        }
+    }
 }
 
 void CountingSemaphoreScheduler::updateInformationLabels() {
@@ -886,30 +988,22 @@ void CountingSemaphoreScheduler::startSimulation() {
     pendingActions.clear();
     currentCycleAccess.clear();
     currentCycleWaiting.clear();
+    activeActions.clear(); // Limpiar acciones activas también
     
     initializeResources();
     
     // Crear los widgets de procesos si el panel lateral existe
     if (sidePanel && processContainer) {
         createProcessWidgets();
-        
-        // Simular algunas acciones pendientes para mostrar el funcionamiento
-        // Esto es temporal para demostrar las sublistas
-        if (!actions.isEmpty()) {
-            // Tomar las primeras acciones y simular que están pendientes
-            for (int i = 0; i < qMin(3, actions.size()); i++) {
-                const Action& action = actions[i];
-                // Solo agregar como pendiente si no es para el tiempo actual
-                if (action.cycle > 0) {
-                    pendingActions[action.pid] = action;
-                    qDebug() << "Acción pendiente simulada:" << action.pid << action.operation << action.resource << "en tiempo" << action.cycle;
-                }
-            }
-        }
-        
-        // Actualizar inmediatamente el panel para mostrar las acciones pendientes
+        // NO simular acciones pendientes aquí - dejar que el flujo normal las procese
         updateSidePanel();
     }
+    
+    // Procesar inmediatamente las acciones del ciclo 0 ANTES de iniciar el timer
+    processCurrentCycleActions();
+    drawAllProcessStates();
+    updateInformationLabels();
+    updateSidePanel();
     
     simulationTimer->start(1000); // 1 segundo por ciclo
 }
