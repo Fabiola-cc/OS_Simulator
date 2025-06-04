@@ -26,6 +26,8 @@ PriorityScheduler::PriorityScheduler(QObject *parent) : QObject(parent) {
     simulationRunning = false;
     currentProcess = nullptr;
     drawPosition = 0; 
+    processStartTimes.clear();
+    totalIdleTime = 0;
     
     // Conectar el timer a la función de actualización de simulación
     connect(simulationTimer, &QTimer::timeout, this, &PriorityScheduler::updateSimulation);
@@ -131,6 +133,8 @@ void PriorityScheduler::startSimulation() {
         // Limpiar métricas de ejecuciones anteriores
         waitingTimes.clear();
         completionTimes.clear();
+        processStartTimes.clear();
+        totalIdleTime = 0;
         
         // Iniciar timer de animación (500ms por ciclo de CPU)
         simulationTimer->start(500);
@@ -237,14 +241,20 @@ void PriorityScheduler::updateSimulation() {
     
     // Determinar si cambiar de proceso (preemption)
     if (highestPriorityProcess != nullptr) {
-        // Cambiar proceso si:
-        // 1. No hay proceso actual ejecutándose
-        // 2. El nuevo proceso tiene mayor prioridad
-        // 3. Mismo nivel de prioridad pero llegó antes (FCFS tie-breaking)
         if (currentProcess == nullptr || 
             highestPriorityProcess->priority < currentProcess->priority ||
             (highestPriorityProcess->priority == currentProcess->priority && 
              highestPriorityProcess->arrivalTime < currentProcess->arrivalTime)) {
+            
+            if (currentProcess != highestPriorityProcess && 
+                !processStartTimes.contains(highestPriorityProcess->pid)) {
+                
+                int adjustedStartTime = currentTime - totalIdleTime;
+                processStartTimes[highestPriorityProcess->pid] = adjustedStartTime;
+                adjustedStartTimes[highestPriorityProcess->pid] = adjustedStartTime;  
+                
+            }
+            
             currentProcess = highestPriorityProcess;
         }
     }
@@ -265,7 +275,8 @@ void PriorityScheduler::updateSimulation() {
             stopSimulation();
             return;
         } else {
-            // CPU idle: tiempo de organización (sin mostrar en diagrama)
+            // ★ CPU IDLE: Contar tiempo de organización
+            totalIdleTime++;
             currentTime++;
             return;
         }
@@ -275,7 +286,7 @@ void PriorityScheduler::updateSimulation() {
     currentProcess->burstTime--;
 
     // VISUALIZACIÓN: Dibujar rectángulo del proceso en el diagrama de Gantt
-    int y = 30; // Posición vertical fija
+    int y = 30;
     ganttScene->addRect(
         drawPosition * 30, y, 30, 30,
         QPen(Qt::black), QBrush(processColors[currentProcess->pid])
@@ -285,19 +296,28 @@ void PriorityScheduler::updateSimulation() {
     QGraphicsTextItem *textItem = ganttScene->addText(currentProcess->pid);
     textItem->setPos(drawPosition * 30 + 5, y + 5);
 
-    // FINALIZACIÓN: Verificar si el proceso ha completado su ejecución
+    // ★ FINALIZACIÓN MEJORADA CON TIEMPO AJUSTADO
     if (currentProcess->burstTime <= 0) {
-        // Registrar tiempo de finalización
-        completionTimes[currentProcess->pid] = currentTime + 1;
+        // Registrar tiempo de finalización (sin idle time)
+        int adjustedCompletionTime = (currentTime + 1) - totalIdleTime;
+        completionTimes[currentProcess->pid] = adjustedCompletionTime;
 
-        // Calcular tiempo de espera usando datos originales del proceso
-        auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
-                               [&](const Process& p) { return p.pid == currentProcess->pid; });
+        // Calcular waiting time con tiempos ajustados
+        if (processStartTimes.contains(currentProcess->pid)) {
+            auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
+                                   [&](const Process& p) { return p.pid == currentProcess->pid; });
 
-        if (it != arrivalSortedProcesses.end()) {
-            int waitTime = completionTimes[currentProcess->pid] -
-                           it->arrivalTime - it->burstTime;
-            waitingTimes[currentProcess->pid] = waitTime;
+            if (it != arrivalSortedProcesses.end()) {
+                int startTime = processStartTimes[currentProcess->pid];
+                int completionTime = adjustedCompletionTime;
+                int originalBurstTime = it->burstTime;
+                
+                int totalTime = completionTime - startTime;
+                int waitTime = totalTime - originalBurstTime;
+                
+                waitingTimes[currentProcess->pid] = waitTime;
+  
+            }
         }
         
         // Liberar proceso actual para seleccionar el siguiente
@@ -321,18 +341,18 @@ void PriorityScheduler::updateSimulation() {
  * Calcula tiempo de espera promedio y emite señal de finalización
  */
 void PriorityScheduler::calculateMetrics() {
-    double totalWaitingTime = 0;
+       double totalAdjustedStartTime = 0;
     
-    // Sumar todos los tiempos de espera individuales
-    for (const QString& pid : waitingTimes.keys()) {
-        totalWaitingTime += waitingTimes[pid];
+    for (const QString& pid : adjustedStartTimes.keys()) {
+        int adjustedStartTime = adjustedStartTimes[pid];
+        
+        
+        totalAdjustedStartTime += adjustedStartTime;  // ← SUMAR START TIMES
+        
     }
     
-    // Calcular promedio
-    double avgWaitingTime = totalWaitingTime / processes.size();
-    
-    // Notificar finalización con resultado
-    emit simulationFinished(avgWaitingTime);
+    double avgStartTime = totalAdjustedStartTime / processes.size();
+    emit simulationFinished(avgStartTime);
 }
 
 //==============================================================================
@@ -356,8 +376,10 @@ double PriorityScheduler::simulateWithoutGUI() {
     // Variables locales para métricas de simulación
     QMap<QString, int> simWaitingTimes;
     QMap<QString, int> simCompletionTimes;
+    QMap<QString, int> simAdjustedStartTimes; 
     
     int simTime = 0;
+    int simTotalIdleTime = 0;
     Process* currentSimProcess = nullptr;
     
     // BUCLE PRINCIPAL DE SIMULACIÓN
@@ -402,6 +424,15 @@ double PriorityScheduler::simulateWithoutGUI() {
             highestPriorityProcess = availableProcesses.first();
         }
         
+        // ★ REGISTRAR ADJUSTED START TIME
+        if (highestPriorityProcess != nullptr && 
+            !simAdjustedStartTimes.contains(highestPriorityProcess->pid)) {
+            
+            int adjustedStartTime = simTime - simTotalIdleTime;  // ← CALCULAR ADJUSTED
+            simProcessStartTimes[highestPriorityProcess->pid] = simTime;
+            simAdjustedStartTimes[highestPriorityProcess->pid] = adjustedStartTime;  // ← GUARDAR
+        }
+        
         // Asignar proceso seleccionado (algoritmo preemptivo)
         currentSimProcess = highestPriorityProcess;
 
@@ -421,6 +452,7 @@ double PriorityScheduler::simulateWithoutGUI() {
                 break;
             } else {
                 // CPU idle: avanzar tiempo y continuar
+                simTotalIdleTime++; 
                 simTime++;
                 continue;
             }
@@ -430,18 +462,24 @@ double PriorityScheduler::simulateWithoutGUI() {
         currentSimProcess->burstTime--;
 
         // Verificar finalización del proceso
-        if (currentSimProcess->burstTime <= 0) {
-            // Registrar tiempo de finalización
-            simCompletionTimes[currentSimProcess->pid] = simTime + 1;
+       if (currentSimProcess->burstTime <= 0) {
+            int adjustedCompletionTime = (simTime + 1) - simTotalIdleTime;  // ← ADJUSTED COMPLETION
+            simCompletionTimes[currentSimProcess->pid] = adjustedCompletionTime;
 
-            // Calcular tiempo de espera usando datos originales
-            auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
-                                   [&](const Process& p) { return p.pid == currentSimProcess->pid; });
+            if (simAdjustedStartTimes.contains(currentSimProcess->pid)) {
+                auto it = std::find_if(arrivalSortedProcesses.begin(), arrivalSortedProcesses.end(),
+                                       [&](const Process& p) { return p.pid == currentSimProcess->pid; });
 
-            if (it != arrivalSortedProcesses.end()) {
-                int waitTime = simCompletionTimes[currentSimProcess->pid] -
-                               it->arrivalTime - originalBurstTimes[currentSimProcess->pid];
-                simWaitingTimes[currentSimProcess->pid] = waitTime;
+                if (it != arrivalSortedProcesses.end()) {
+                    int adjustedStartTime = simAdjustedStartTimes[currentSimProcess->pid];  // ← USAR ADJUSTED
+                    int adjustedCompletionTime = simCompletionTimes[currentSimProcess->pid];
+                    int originalBurstTime = originalBurstTimes[currentSimProcess->pid];
+                    
+                    int totalTime = adjustedCompletionTime - adjustedStartTime;
+                    int waitTime = totalTime - originalBurstTime;
+                    
+                    simWaitingTimes[currentSimProcess->pid] = waitTime;
+                }
             }
         }
 
@@ -452,7 +490,11 @@ double PriorityScheduler::simulateWithoutGUI() {
     // Calcular tiempo de espera promedio final
     double totalWaitingTime = 0;
     for (const QString& pid : simWaitingTimes.keys()) {
-        totalWaitingTime += simWaitingTimes[pid];
+        int adjustedStartTime = simAdjustedStartTimes[pid];  
+        int waitTime = simWaitingTimes[pid];
+    
+        totalWaitingTime += adjustedStartTime;  // ← Opción 2: Sumar start times
+    
     }
     
     return totalWaitingTime / processes.size();

@@ -83,10 +83,13 @@ private:
     
     // Método para calcular métricas finales
     void calculateMetrics();
+    QMap<QString, int> adjustedStartTimes; 
+    QMap<QString, int> simProcessStartTimes; 
 
   
     int drawPosition; // Posición visual en el diagrama (sin idle times)
-
+    QMap<QString, int> processStartTimes;
+    int totalIdleTime;
 
 };
 
