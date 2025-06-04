@@ -803,7 +803,7 @@ void SimulatorClient::setupMutexSimulationWidget() {
     
     // Vista para el diagrama de Gantt de mutex
     mutGanttView = new QGraphicsView(this);
-    mutGanttView->setFixedHeight(220);
+    mutGanttView->setFixedHeight(500);
     mutSimLayout->addWidget(mutGanttView);
     
     // Etiqueta para mostrar métricas
