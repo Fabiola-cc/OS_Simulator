@@ -17,6 +17,7 @@
 #include <QWidget>
 #include <QDebug>
 #include "structures.h"
+#include <qtextedit.h>
 
 class CountingSemaphoreScheduler : public QObject {
     Q_OBJECT
@@ -30,6 +31,8 @@ public:
     void setActions(const QList<Action> &newActions);
     void startSimulation();
     void stopSimulation();
+    QString formatLogForDisplay();  // Para formatear el log para mostrar
+
 
 signals:
     void simulationFinished(double averageExecutionTime);
@@ -46,6 +49,14 @@ private:
         int startTime;
         int endTime;
     };
+
+    QWidget *logDisplayWidget;
+    QTextEdit *logTextEdit;
+    void setupLogDisplayWidget();
+    void showSimulationLog();
+
+    QStringList simulationLog;  // Para almacenar todo el log
+    void addToLog(const QString& message);  // Para agregar mensajes al log
     
     // Componentes gráficos
     QGraphicsScene *ganttScene;

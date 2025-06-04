@@ -12,10 +12,15 @@
 #include <QCheckBox>
 #include <QGraphicsView>
 #include <QDebug>
+#include <QTextEdit>      
+#include <QClipboard>     
+#include <QTimer>  
 
 SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     resize(800, 600);
     setWindowTitle("Simulator");
+    logDisplayWidget = nullptr;
+    logTextEdit = nullptr;
 
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
 
@@ -563,8 +568,88 @@ bool SimulatorClient::validateSyncDataMutex() {
     return true;
 }
 
-
-
+void SimulatorClient::setupLogDisplayWidget() {
+    logDisplayWidget = new QWidget();
+    logDisplayWidget->setWindowTitle("Log de Simulación");
+    logDisplayWidget->resize(800, 600);
+    
+    QVBoxLayout *logLayout = new QVBoxLayout(logDisplayWidget);
+    
+    // Título
+    QLabel *logTitle = new QLabel("📜 Log Completo de la Simulación");
+    logTitle->setAlignment(Qt::AlignCenter);
+    QFont titleFont = logTitle->font();
+    titleFont.setBold(true);
+    titleFont.setPointSize(14);
+    logTitle->setFont(titleFont);
+    logLayout->addWidget(logTitle);
+    
+    // Área de texto para el log
+    logTextEdit = new QTextEdit();
+    logTextEdit->setFont(QFont("Consolas", 10)); // Fuente monoespaciada
+    logTextEdit->setReadOnly(true);
+    logTextEdit->setStyleSheet(
+        "QTextEdit { "
+        "   background-color: #1e1e1e; "
+        "   color: #ffffff; "
+        "   border: 1px solid #555; "
+        "   padding: 10px; "
+        "}"
+    );
+    logLayout->addWidget(logTextEdit);
+    
+    // Botones
+    QHBoxLayout *buttonLayout = new QHBoxLayout();
+    
+    QPushButton *copyButton = new QPushButton("📋 Copiar Log");
+    QPushButton *saveButton = new QPushButton("💾 Guardar Log");
+    QPushButton *closeButton = new QPushButton("❌ Cerrar");
+    
+    connect(copyButton, &QPushButton::clicked, [=]() {
+        QApplication::clipboard()->setText(logTextEdit->toPlainText());
+        QMessageBox::information(this, "Copiado", "Log copiado al portapapeles");
+    });
+    
+    connect(saveButton, &QPushButton::clicked, [=]() {
+        QString fileName = QFileDialog::getSaveFileName(
+            this, "Guardar Log", "", "Archivos de texto (*.txt)");
+        if (!fileName.isEmpty()) {
+            QFile file(fileName);
+            if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream out(&file);
+                out << logTextEdit->toPlainText();
+                file.close();
+                QMessageBox::information(this, "Guardado", "Log guardado exitosamente");
+            }
+        }
+    });
+    
+    connect(closeButton, &QPushButton::clicked, logDisplayWidget, &QWidget::hide);
+    
+    buttonLayout->addWidget(copyButton);
+    buttonLayout->addWidget(saveButton);
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(closeButton);
+    
+    logLayout->addLayout(buttonLayout);
+    
+    // Hacer que la ventana esté oculta inicialmente
+    logDisplayWidget->hide();
+}
+void SimulatorClient::showSimulationLog() {
+    if (!logDisplayWidget) {
+        setupLogDisplayWidget();
+    }
+    
+    // Obtener el log del scheduler y mostrarlo
+    QString logContent = countingSemaphoreScheduler->formatLogForDisplay();
+    logTextEdit->setPlainText(logContent);
+    
+    // Mostrar la ventana
+    logDisplayWidget->show();
+    logDisplayWidget->raise();
+    logDisplayWidget->activateWindow();
+}
 void SimulatorClient::onCountingSemaphoreSimClicked() {
     if (!validateSyncData()) {
         return;
@@ -635,8 +720,20 @@ void SimulatorClient::onSemaphoreSimulationFinished(double avgExecutionTime) {
     QString metrics = QString("Tiempo promedio de ejecución: %1 unidades de tiempo").arg(avgExecutionTime);
     semaphoreMetricsLabel->setText(metrics);
     
-    QMessageBox::information(this, "Simulación de Semáforo completada", 
-                           "La simulación ha finalizado.\n" + metrics);
+    // Crear mensaje con botón para ver log
+    QMessageBox msgBox;
+    msgBox.setWindowTitle("Simulación de Semáforo completada");
+    msgBox.setText("La simulación ha finalizado.\n" + metrics);
+    msgBox.setInformativeText("¿Desea ver el log completo de la simulación?");
+    
+    QPushButton *viewLogButton = msgBox.addButton("📜 Ver Log Completo", QMessageBox::ActionRole);
+    QPushButton *okButton = msgBox.addButton("✅ Aceptar", QMessageBox::AcceptRole);
+    
+    msgBox.exec();
+    
+    if (msgBox.clickedButton() == viewLogButton) {
+        showSimulationLog();
+    }
 }
 
 void SimulatorClient::onMutexSimulationFinished(double avgExecutionTime) {

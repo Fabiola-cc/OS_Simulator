@@ -439,7 +439,7 @@ void CountingSemaphoreScheduler::initializeResources() {
 void CountingSemaphoreScheduler::updateSimulation() {
     // Avanzar al siguiente ciclo
     currentTime++;
-    qDebug() << "\n🔄 Iniciando ciclo" << currentTime;
+    addToLog(QString("\n🔄 Iniciando ciclo %1").arg(currentTime));
     
     // Procesar acciones para este nuevo ciclo
     processCurrentCycleActions();
@@ -455,7 +455,7 @@ void CountingSemaphoreScheduler::updateSimulation() {
     
     // Verificar si la simulación ha terminado
     if (checkSimulationComplete()) {
-        qDebug() << "🏁 Simulación completada en ciclo" << currentTime;
+        addToLog(QString("🏁 Simulación completada en ciclo %1").arg(currentTime));
         stopSimulation();
         return;
     }
@@ -711,7 +711,7 @@ QString CountingSemaphoreScheduler::getProcessStateSymbol(const QString& state) 
 }
 
 void CountingSemaphoreScheduler::processCurrentCycleActions() {
-    qDebug() << "=== Procesando ciclo" << currentTime << "===";
+    addToLog(QString("=== Procesando ciclo %1 ===").arg(currentTime));
     
     // Limpiar estados del ciclo anterior al inicio
     currentCycleAccess.clear();
@@ -722,14 +722,113 @@ void CountingSemaphoreScheduler::processCurrentCycleActions() {
         if (it.value().endTime <= currentTime) {
             // Liberar recurso
             resourceCounters[it.value().resource]++;
-            qDebug() << "Liberando recurso" << it.value().resource << "del proceso" << it.key() 
-                     << "en tiempo" << currentTime;
+            addToLog(QString("Liberando recurso \"%1\" del proceso \"%2\" en tiempo %3")
+                     .arg(it.value().resource).arg(it.key()).arg(currentTime));
             it = activeActions.erase(it);
         } else {
             ++it;
         }
     }
     
+    // SEGUNDO: Procesar acciones pendientes
+    for (auto it = pendingActions.begin(); it != pendingActions.end(); ) {
+        Action pendingAction = it.value();
+        QString pid = it.key();
+        
+        addToLog(QString("Verificando acción pendiente de \"%1\" para recurso \"%2\"")
+                 .arg(pid).arg(pendingAction.resource));
+        
+        if (resourceCounters[pendingAction.resource] > 0) {
+            resourceCounters[pendingAction.resource]--;
+            currentCycleAccess[pid] = pendingAction;
+            
+            ActiveAction activeAction;
+            activeAction.pid = pid;
+            activeAction.resource = pendingAction.resource;
+            activeAction.operation = pendingAction.operation;
+            activeAction.startTime = currentTime;
+            activeAction.endTime = currentTime + 1;
+            activeActions[pid] = activeAction;
+            
+            addToLog(QString("✅ Concediendo acceso pendiente a \"%1\" para \"%2\" en tiempo %3")
+                     .arg(pid).arg(pendingAction.resource).arg(currentTime));
+            
+            it = pendingActions.erase(it);
+        } else {
+            currentCycleWaiting[pid] = pendingAction;
+            addToLog(QString("❌ Proceso \"%1\" sigue esperando \"%2\" en tiempo %3 (disponibles: %4)")
+                     .arg(pid).arg(pendingAction.resource).arg(currentTime)
+                     .arg(resourceCounters[pendingAction.resource]));
+            ++it;
+        }
+    }
+    
+    // TERCERO: Procesar nuevas acciones
+    for (const Action& action : actions) {
+        if (action.cycle == currentTime) {
+            QString pid = action.pid;
+            
+            addToLog(QString("Nueva acción programada: \"%1\" solicita \"%2\" en ciclo %3")
+                     .arg(pid).arg(action.resource).arg(currentTime));
+            
+            if (currentCycleAccess.contains(pid)) {
+                pendingActions[pid] = action;
+                addToLog(QString("⏳ Proceso \"%1\" ya tiene acceso, poniendo nueva acción como pendiente").arg(pid));
+                continue;
+            }
+            
+            if (resourceCounters[action.resource] > 0) {
+                resourceCounters[action.resource]--;
+                currentCycleAccess[pid] = action;
+                
+                ActiveAction activeAction;
+                activeAction.pid = pid;
+                activeAction.resource = action.resource;
+                activeAction.operation = action.operation;
+                activeAction.startTime = currentTime;
+                activeAction.endTime = currentTime + 1;
+                activeActions[pid] = activeAction;
+                
+                addToLog(QString("✅ Concediendo acceso nuevo a \"%1\" para \"%2\" en tiempo %3")
+                         .arg(pid).arg(action.resource).arg(currentTime));
+            } else {
+                pendingActions[pid] = action;
+                currentCycleWaiting[pid] = action;
+                addToLog(QString("❌ Proceso \"%1\" esperando \"%2\" en tiempo %3 (recurso no disponible, disponibles: %4)")
+                         .arg(pid).arg(action.resource).arg(currentTime)
+                         .arg(resourceCounters[action.resource]));
+            }
+        }
+    }
+    
+    // Estado final del ciclo
+    addToLog(QString("Estado final del ciclo %1:").arg(currentTime));
+    addToLog(QString("- Accesos concedidos: %1").arg(currentCycleAccess.size()));
+    addToLog(QString("- Procesos esperando: %1").arg(currentCycleWaiting.size()));
+    addToLog(QString("- Acciones pendientes totales: %1").arg(pendingActions.size()));
+    
+    for (const Resource& r : resources) {
+        addToLog(QString("- Recurso \"%1\": %2 / %3 disponibles")
+                 .arg(r.name).arg(resourceCounters[r.name]).arg(r.counter));
+    }
+}
+
+void CountingSemaphoreScheduler::addToLog(const QString& message) {
+    simulationLog << message;
+    qDebug() << message;  // También imprimir en consola
+}
+
+QString CountingSemaphoreScheduler::formatLogForDisplay() {
+    QString formattedLog;
+    formattedLog += "📜 =============== LOG COMPLETO DE SIMULACIÓN ===============\n\n";
+    
+    for (const QString& logLine : simulationLog) {
+        formattedLog += logLine + "\n";
+    }
+    
+    formattedLog += "\n📜 ===================== FIN DEL LOG =====================\n";
+    return formattedLog;
+
     // SEGUNDO: Procesar acciones pendientes (que ya estaban esperando)
     for (auto it = pendingActions.begin(); it != pendingActions.end(); ) {
         Action pendingAction = it.value();
@@ -815,8 +914,8 @@ void CountingSemaphoreScheduler::processCurrentCycleActions() {
     for (const Resource& r : resources) {
         qDebug() << "- Recurso" << r.name << ":" << resourceCounters[r.name] << "/" << r.counter << "disponibles";
     }
-}
 
+}
 
 void CountingSemaphoreScheduler::drawAllProcessStates() {
     // NO procesar acciones aquí - ya se procesaron en processCurrentCycleActions()
@@ -989,6 +1088,13 @@ void CountingSemaphoreScheduler::startSimulation() {
     currentCycleAccess.clear();
     currentCycleWaiting.clear();
     activeActions.clear(); // Limpiar acciones activas también
+
+     simulationLog.clear();
+    addToLog("=== INICIANDO SIMULACIÓN ===");
+    addToLog(QString("Procesos: %1").arg(processes.size()));
+    addToLog(QString("Recursos: %1").arg(resources.size()));
+    addToLog(QString("Acciones: %1").arg(actions.size()));
+    
     
     initializeResources();
     

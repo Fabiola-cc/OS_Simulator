@@ -7,6 +7,8 @@
 #include <QCheckBox>
 #include <QLineEdit>
 #include <QGraphicsView>
+#include <QTextEdit>
+#include <QClipboard>
 #include "structures.h"
 #include "fifo_scheduler.h"
 #include "sjf_scheduler.h"
@@ -34,8 +36,7 @@ public slots:
     void onCountingSemaphoreSimClicked();
     void onSemaphoreSimulationFinished(double avgExecutionTime);
     void onMutexSimClicked();
-    void onMutexSimulationFinished(double avgExecutionTime);
-
+    void onMutexSimulationFinished(double avgExecutionTime);  // ← LÍNEA 34 PROBLEMÁTICA
 
 private:
     // General
@@ -43,7 +44,7 @@ private:
     QList<Process> processList;
     QList<Resource> resources;
     QList<Action> actions;
-    QList<Process> syncProcessList;    // Para no mezclar con calendarización
+    QList<Process> syncProcessList;
     QList<Resource> syncResourceList;
     QList<Action> syncActionList;
 
@@ -127,6 +128,10 @@ private:
     QLabel *semaphoreMetricsLabel;
     QLabel *mutMetricsLabel;
 
+    // Variables para el log
+    QWidget *logDisplayWidget;
+    QTextEdit *logTextEdit;
+
     // Métodos privados
     void setupSimulationWidget();
     void setupSemaphoreSimulationWidget();
@@ -144,6 +149,10 @@ private:
     void onLoadSyncActionsClicked();
     bool validateSyncData();
     bool validateSyncDataMutex();
+    
+    // Métodos para el log
+    void setupLogDisplayWidget();
+    void showSimulationLog();
 };
 
 #endif // CLIENT_H
