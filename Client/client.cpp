@@ -655,7 +655,7 @@ void SimulatorClient::setupSemaphoreSimulationWidget() {
     
     // Vista para el diagrama de Gantt de semáforos
     semaphoreGanttView = new QGraphicsView(this);
-    semaphoreGanttView->setFixedHeight(220);
+    semaphoreGanttView->setFixedHeight(600);
     semSimLayout->addWidget(semaphoreGanttView);
     
     // Etiqueta para mostrar métricas
