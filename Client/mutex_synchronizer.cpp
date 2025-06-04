@@ -39,7 +39,7 @@ void MutexSynchronizer::setupGanttChart(QGraphicsView *view) {
     ganttScene->clear();
     
     // Calcular dimensiones mejoradas
-    int headerHeight = 140;  // Más espacio para contador de semáforo
+    int headerHeight = 170;  // Más espacio para contador de semáforo
     int processRowHeight = 50;
     int totalHeight = headerHeight + (processes.size() * processRowHeight) + 100;
     
@@ -60,51 +60,43 @@ void MutexSynchronizer::setupGanttChart(QGraphicsView *view) {
 
 void MutexSynchronizer::setupInformationPanel() {
     // Fondo del panel de información
-    QGraphicsRectItem *infoPanelBg = ganttScene->addRect(0, 0, 6000, 100, 
+    QGraphicsRectItem *infoPanelBg = ganttScene->addRect(0, 0, 6500, 135, 
         QPen(Qt::darkGray, 2), QBrush(QColor(255, 248, 220))); // Color crema
     
     // Título principal
     QGraphicsTextItem *title = ganttScene->addText("SIMULACIÓN MUTEX", 
         QFont("Arial", 14, QFont::Bold));
-    title->setPos(20, 10);
+    title->setPos(10, 10);
     title->setDefaultTextColor(QColor(139, 69, 19)); // Marrón
     
     // Tiempo actual
     currentTimeLabel = ganttScene->addText("Tiempo: 0", QFont("Arial", 12, QFont::Bold));
-    currentTimeLabel->setPos(20, 40);
+    currentTimeLabel->setPos(10, 40);
     currentTimeLabel->setDefaultTextColor(QColor(0, 100, 0));
     
     // Estado del semáforo con contador visual
     semaphoreStatusLabel = ganttScene->addText("Recursos disponibles: 0/0", QFont("Arial", 12, QFont::Bold));
-    semaphoreStatusLabel->setPos(200, 40);
+    semaphoreStatusLabel->setPos(10, 70);
     semaphoreStatusLabel->setDefaultTextColor(QColor(0, 100, 150));
     
     // Cola de bloqueados
-    blockedQueueLabel = ganttScene->addText("Procesos bloqueados: 0", QFont("Arial", 12));
-    blockedQueueLabel->setPos(450, 40);
+    blockedQueueLabel = ganttScene->addText("Procesos esperando: 0", QFont("Arial", 12));
+    blockedQueueLabel->setPos(10, 100);
     blockedQueueLabel->setDefaultTextColor(QColor(150, 0, 0));
     
     // Indicador visual de recursos (será creado dinámicamente)
     resourceIndicatorLabel = ganttScene->addText("Estado recursos: ", QFont("Arial", 10));
-    resourceIndicatorLabel->setPos(250, 70);
+    resourceIndicatorLabel->setPos(260, 100);
     resourceIndicatorLabel->setDefaultTextColor(QColor(100, 100, 100));
 
     resourceUsageLabel = ganttScene->addText("", QFont("Courier New", 10));
-    resourceUsageLabel->setPos(370, 70);
+    resourceUsageLabel->setPos(380, 100);
     resourceUsageLabel->setDefaultTextColor(Qt::darkBlue);
-
-
-    processLogBackground = ganttScene->addRect(
-        700, 10,    
-        420, 80,          
-        QPen(Qt::darkGray, 1),
-        QBrush(QColor(255, 255, 240))
-    );
 
     // Título del log
     QGraphicsTextItem *logTitle = ganttScene->addText(
         "Historial de Procesos", QFont("Arial", 10, QFont::Bold));
-    logTitle->setPos(710, 15);
+    logTitle->setPos(260, 5);
     logTitle->setDefaultTextColor(Qt::black);
 
     // Área de texto tipo consola (Courier)
@@ -114,13 +106,13 @@ void MutexSynchronizer::setupInformationPanel() {
     logWidget->setStyleSheet("background-color: #FFFFF0;");
 
     QGraphicsProxyWidget *proxy = ganttScene->addWidget(logWidget);
-    proxy->setPos(710, 35);   
-    proxy->resize(400, 25);   
+    proxy->setPos(260, 25);   
+    proxy->resize(400, 10);   
 
 }
 
 void MutexSynchronizer::setupLegend() {
-    int legendY = 105;
+    int legendY = 140;
     
     // Título de leyenda
     QGraphicsTextItem *legendTitle = ganttScene->addText("LEYENDA DE ESTADOS:", 
@@ -270,18 +262,48 @@ void MutexSynchronizer::startSimulation() {
     simulationTimer->start(800);  // cada 800 ms avanza un ciclo
 }
 
-void MutexSynchronizer::drawAccessBar(const QString& pid, int index, int time, QColor color, const QString& operation) {
-    int y = 140 + index * 50;
-    int x = 200 + time * 40;
+void MutexSynchronizer::drawAccessBar(const QString& pid, int index, int time, QColor color,
+                                      const QString& operation, const QString& resourceName) {
+    int rectWidth = 40;
+    int rectHeight = 30;
+    int y = 170 + index * 50;
+    int x = 200 + time * rectWidth;
 
-    // Dibuja el rectángulo
-    ganttScene->addRect(x, y + 5, 40, 30, QPen(Qt::black), QBrush(color));
+    // Función para calcular el font size que mejor se ajusta (sin negrita)
+    auto fitFontSize = [](const QString& text, int maxWidth, int maxFontSize = 8, int minFontSize = 5) {
+        for (int fontSize = maxFontSize; fontSize >= minFontSize; --fontSize) {
+            QFont font("Arial", fontSize);  // sin QFont::Bold
+            QFontMetricsF fm(font);
+            if (fm.horizontalAdvance(text) <= maxWidth) {
+                return font;
+            }
+        }
+        return QFont("Arial", minFontSize);  // mínimo permitido
+    };
 
-    // Dibuja el número de recursos utilizados (para ahora, siempre 1)
-    QGraphicsTextItem *resourceNum = ganttScene->addText(operation, QFont("Arial", 8, QFont::Bold));
-    resourceNum->setPos(x + 25, y + 15);
-    resourceNum->setDefaultTextColor(Qt::black);
+    // Calcular fuentes ajustadas
+    QFont opFont = fitFontSize(operation, rectWidth);
+    QFont resFont = fitFontSize(resourceName, rectWidth);
+
+    // Dibujar el rectángulo
+    ganttScene->addRect(x, y + 5, rectWidth, rectHeight, QPen(Qt::black), QBrush(color));
+
+    // Texto 1: Operación (arriba)
+    QGraphicsTextItem* opText = ganttScene->addText(operation, opFont);
+    QFontMetricsF opFm(opFont);
+    opText->setDefaultTextColor(Qt::black);
+    opText->setPos(x, y + 7);  // alineado a la izquierda sin margen
+
+    // Texto 2: Recurso (abajo)
+    QGraphicsTextItem* resText = ganttScene->addText(resourceName, resFont);
+    QFontMetricsF resFm(resFont);
+    resText->setDefaultTextColor(Qt::black);
+    resText->setPos(x, y + 17);  // alineado a la izquierda sin margen
 }
+
+
+
+
 
 
 void MutexSynchronizer::updateSimulation() {
@@ -323,13 +345,13 @@ void MutexSynchronizer::updateSimulation() {
         if (resourceMutexes.value(resource, true)) {
             resourceMutexes[resource] = false; // recurso tomado
             resourceOwners[resource] = pid;
-            drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation); // verde éxito
+            drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation, resource); // verde éxito
 
            appendLog(QString("T%1 | %2 ACCEDE %3 -> %4").arg(currentTime).arg(pid).arg(resource).arg(operation));
             processesExecutedFromBlocked.insert(pid);
         } else {
             newBlockedQueue.enqueue(action);
-            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING", resource);
             
             appendLog(QString("T%1 | %2 BLOQUEADO esperando %3").arg(currentTime).arg(pid).arg(resource));
         }
@@ -346,19 +368,19 @@ void MutexSynchronizer::updateSimulation() {
 
         if (processesExecutedFromBlocked.contains(pid)) {
             newBlockedQueue.enqueue(action);
-            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING", resource);
             
             appendLog(QString("T%1 | %2 BLOQUEADO por acción anterior").arg(currentTime).arg(pid));
         } else {
             if (resourceMutexes.value(resource, true)) {
                 resourceMutexes[resource] = false;
                 resourceOwners[resource] = pid;
-                drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation);
+                drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation, resource);
                 
                 appendLog(QString("T%1 | %2 ACCEDE %3 -> %4").arg(currentTime).arg(pid).arg(resource).arg(operation));
             } else {
                 newBlockedQueue.enqueue(action);
-                drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+                drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING", resource);
                 
                 appendLog(QString("T%1 | %2 BLOQUEADO esperando %3").arg(currentTime).arg(pid).arg(resource));
             }
@@ -408,16 +430,11 @@ void MutexSynchronizer::updateSimulation() {
         blockedPids.insert(a.pid);
     }
     blockedQueueLabel->setPlainText(
-        QString("Procesos bloqueados: %1").arg(blockedPids.size())
+        QString("Procesos esperando: %1").arg(blockedPids.size())
     );
 
     
     resourceUsageLabel->setPlainText(resourceStatusList.join(" | "));
-
-    // 7. Incrementar tiempo y actualizar etiqueta
-    currentTime++;
-    appendLog("-----------------------");
-    currentTimeLabel->setPlainText(QString("Tiempo: %1").arg(currentTime));
 
     bool noMoreActions = true;
     for (const Action& action : actions) {
@@ -436,6 +453,13 @@ void MutexSynchronizer::updateSimulation() {
         QString("Recursos disponibles: %1/%2").arg(totalResources).arg(totalResources));
         appendLog("---- SIMULACIÓN FINALIZADA ----");
     }
+
+    // 7. Incrementar tiempo y actualizar etiqueta
+    currentTime++;
+    appendLog("-----------------------");
+    currentTimeLabel->setPlainText(QString("Tiempo: %1").arg(currentTime));
+
+    
    
 }
 

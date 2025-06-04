@@ -31,7 +31,8 @@ public:
     void setupLegend();
     void setupProcessRows(int startY);
     void setupTimeGrid(int startY, int endY);
-    void drawAccessBar(const QString& pid, int index, int time, QColor color, const QString& operation); 
+    void drawAccessBar(const QString& pid, int index, int time, QColor color, const QString& operation, const QString& resourceName);
+
 
 signals:
     void simulationFinished(double averageExecutionTime);
@@ -51,9 +52,9 @@ private:
     QMap<QString, bool> resourceMutexes;
 
     QGraphicsTextItem *processLogLabel;
-    QGraphicsRectItem *processLogBackground;
     QStringList processLogHistory;
     QTextEdit* logWidget;
+    
 
 
 
