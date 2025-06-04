@@ -6,6 +6,7 @@
 #include <QColor>
 #include <algorithm>
 #include <climits> 
+#include <iostream>
 
 RoundRobinScheduler::RoundRobinScheduler(QObject *parent) : QObject(parent) {
     ganttScene = new QGraphicsScene(this);
@@ -89,24 +90,47 @@ void RoundRobinScheduler::stopSimulation() {
 }
 
 void RoundRobinScheduler::updateSimulation() {
+    std::cout << "=== Tiempo actual: " << currentTime << " ===" << std::endl;
+
     // Agregar nuevos procesos al readyQueue
     for (const Process& p : allProcesses) {
         if (p.arrivalTime == currentTime) {
             readyQueue.enqueue(p);
+            std::cout << "Proceso " << p.pid.toStdString() << " llegó y se añadió a la cola de listos." << std::endl;
+            std::cout << "ReadyQueue: [ ";
+            for (const Process& p : std::as_const(readyQueue))
+                std::cout << p.pid.toStdString() << " ";
+            std::cout << "]" << std::endl;
         }
     }
 
+    // Insertar procesos que fueron pospuestos para este ciclo
+    while (!postponedQueue.isEmpty()) {
+        Process postponed = postponedQueue.dequeue();
+        readyQueue.enqueue(postponed);
+        std::cout << "Proceso " << postponed.pid.toStdString() << " reinsertado en la cola de listos tras agotar quantum." << std::endl;
+    }
+
+
     // Si no hay proceso actual, tomar uno nuevo
     if (!hasCurrentProcess && !readyQueue.isEmpty()) {
+        std::cout << "ReadyQueue: [ ";
+        for (const Process& p : std::as_const(readyQueue))
+            std::cout << p.pid.toStdString() << " ";
+        std::cout << "]" << std::endl;
+
         currentProcess = readyQueue.dequeue();
         quantumCounter = 0;
         hasCurrentProcess = true;
+        std::cout << "Proceso " << currentProcess.pid.toStdString() << " seleccionado para ejecución." << std::endl;
     }
 
     if (hasCurrentProcess) {
-        // Ejecutar proceso actual
         remainingBurst[currentProcess.pid]--;
-        quantumCounter++;
+
+        std::cout << "Ejecutando proceso " << currentProcess.pid.toStdString()
+                  << " | Quantum usado: " << quantumCounter
+                  << " | Burst restante: " << remainingBurst[currentProcess.pid] << std::endl;
 
         // Dibujar ejecución
         int y = 30;
@@ -115,18 +139,21 @@ void RoundRobinScheduler::updateSimulation() {
         QGraphicsTextItem *textItem = ganttScene->addText(currentProcess.pid);
         textItem->setPos(currentTime * 30 + 5, y + 5);
 
-        // Si terminó
+        quantumCounter++;  // Primero se incrementa
+
         if (remainingBurst[currentProcess.pid] == 0) {
+            std::cout << "Proceso " << currentProcess.pid.toStdString() << " ha finalizado." << std::endl;
             completionTimes[currentProcess.pid] = currentTime + 1;
             hasCurrentProcess = false;
-        }
-        // Si se agotó el quantum
-        else if (quantumCounter >= quantum) {
-            readyQueue.enqueue(currentProcess);
+        } else if (quantumCounter >= quantum) {  // Compara después de incrementar
+            postponedQueue.enqueue(currentProcess);
             hasCurrentProcess = false;
         }
+
+
     } else {
         // Dibujar idle
+        std::cout << "CPU está inactiva en este ciclo." << std::endl;
         int y = 30;
         ganttScene->addRect(currentTime * 30, y, 30, 30,
                             QPen(Qt::black), QBrush(Qt::lightGray));
@@ -138,12 +165,14 @@ void RoundRobinScheduler::updateSimulation() {
     bool allDone = std::all_of(remainingBurst.begin(), remainingBurst.end(),
                                 [](int timeLeft) { return timeLeft == 0; });
     if (allDone) {
+        std::cout << "Todos los procesos han finalizado. Deteniendo simulación." << std::endl;
         stopSimulation();
         return;
     }
 
     currentTime++;
     ganttView->ensureVisible(currentTime * 30, 0, 100, 0);
+
 }
 
 void RoundRobinScheduler::calculateMetrics() {
@@ -156,6 +185,7 @@ void RoundRobinScheduler::calculateMetrics() {
 double RoundRobinScheduler::simulateWithoutGUI() {
     int time = 0;
     QQueue<Process> queue;
+    QQueue<Process> postponedQueue;  // Para reinserción diferida
     QMap<QString, int> localRemainingBurst;
     QMap<QString, int> localCompletionTimes;
 
@@ -170,7 +200,6 @@ double RoundRobinScheduler::simulateWithoutGUI() {
     int localQuantumCounter = 0;
 
     while (true) {
-        // Agregar procesos que llegan en este tiempo
         for (auto it = pendingProcesses.begin(); it != pendingProcesses.end();) {
             if (it->arrivalTime == time) {
                 queue.enqueue(*it);
@@ -179,6 +208,12 @@ double RoundRobinScheduler::simulateWithoutGUI() {
                 ++it;
             }
         }
+
+        // Insertar procesos que agotaron quantum en el ciclo anterior (van al final)
+        while (!postponedQueue.isEmpty()) {
+            queue.enqueue(postponedQueue.dequeue());
+        }
+
 
         // Tomar nuevo proceso si no hay uno actual
         if (!hasCurrent && !queue.isEmpty()) {
@@ -194,9 +229,8 @@ double RoundRobinScheduler::simulateWithoutGUI() {
             if (localRemainingBurst[currentProc.pid] == 0) {
                 localCompletionTimes[currentProc.pid] = time + 1;
                 hasCurrent = false;
-            }
-            else if (localQuantumCounter >= quantum) {
-                queue.enqueue(currentProc);
+            } else if (localQuantumCounter >= quantum) {
+                postponedQueue.enqueue(currentProc);  // Reinsertar en el siguiente ciclo
                 hasCurrent = false;
             }
         }

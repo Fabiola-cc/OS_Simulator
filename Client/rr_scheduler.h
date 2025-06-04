@@ -44,6 +44,7 @@ private:
     int quantumCounter;
     Process currentProcess;
     bool hasCurrentProcess;
+    QQueue<Process> postponedQueue;
 
     void assignProcessColors();
     void calculateMetrics();
