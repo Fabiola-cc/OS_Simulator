@@ -10,6 +10,8 @@
 #include <QString>
 #include <QColor>
 #include <QSet>
+#include <QTextEdit>
+#include <QGraphicsProxyWidget>
 #include "structures.h"
 
 class MutexSynchronizer : public QObject {
@@ -48,6 +50,12 @@ private:
     QGraphicsTextItem *resourceStatusLabel;
     QMap<QString, bool> resourceMutexes;
 
+    QGraphicsTextItem *processLogLabel;
+    QGraphicsRectItem *processLogBackground;
+    QStringList processLogHistory;
+    QTextEdit* logWidget;
+
+
 
     QList<Process> processes;
     QList<Resource> resources;
@@ -80,6 +88,7 @@ private:
     void handleMutexOperation(const Action &action);
     void executeCurrentProcess();
     void calculateMetrics();
+    void appendLog(const QString& line);
 };
 
 #endif

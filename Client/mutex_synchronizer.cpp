@@ -92,13 +92,38 @@ void MutexSynchronizer::setupInformationPanel() {
     resourceUsageLabel = ganttScene->addText("", QFont("Courier New", 10));
     resourceUsageLabel->setPos(370, 70);
     resourceUsageLabel->setDefaultTextColor(Qt::darkBlue);
+
+
+    processLogBackground = ganttScene->addRect(
+        700, 10,    
+        420, 80,          
+        QPen(Qt::darkGray, 1),
+        QBrush(QColor(255, 255, 240))
+    );
+
+    // Título del log
+    QGraphicsTextItem *logTitle = ganttScene->addText(
+        "Historial de Procesos", QFont("Arial", 10, QFont::Bold));
+    logTitle->setPos(710, 15);
+    logTitle->setDefaultTextColor(Qt::black);
+
+    // Área de texto tipo consola (Courier)
+    logWidget = new QTextEdit;
+    logWidget->setReadOnly(true);
+    logWidget->setFont(QFont("Courier New", 8));
+    logWidget->setStyleSheet("background-color: #FFFFF0;");
+
+    QGraphicsProxyWidget *proxy = ganttScene->addWidget(logWidget);
+    proxy->setPos(710, 35);   
+    proxy->resize(400, 25);   
+
 }
 
 void MutexSynchronizer::setupLegend() {
     int legendY = 105;
     
     // Título de leyenda
-    QGraphicsTextItem *legendTitle = ganttScene->addText("📋 LEYENDA DE ESTADOS:", 
+    QGraphicsTextItem *legendTitle = ganttScene->addText("LEYENDA DE ESTADOS:", 
         QFont("Arial", 10, QFont::Bold));
     legendTitle->setPos(20, legendY);
     legendTitle->setDefaultTextColor(Qt::black);
@@ -113,7 +138,7 @@ void MutexSynchronizer::setupLegend() {
     
     QList<LegendItem> legendItems = {
         {QColor(100, 200, 100), "▶️", "ACCESED", 200},
-        {QColor(255, 100, 100), "▶️", "WAITING", 470},
+        {QColor(255, 100, 100), "▶️", "WAITING", 320},
     };
     
     for (const auto& item : legendItems) {
@@ -299,12 +324,16 @@ void MutexSynchronizer::updateSimulation() {
             resourceMutexes[resource] = false; // recurso tomado
             resourceOwners[resource] = pid;
             drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation); // verde éxito
+
+           appendLog(QString("T%1 | %2 ACCEDE %3 -> %4").arg(currentTime).arg(pid).arg(resource).arg(operation));
             processesExecutedFromBlocked.insert(pid);
         } else {
-            // No disponible, volvemos a bloquear la acción
             newBlockedQueue.enqueue(action);
-            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+            
+            appendLog(QString("T%1 | %2 BLOQUEADO esperando %3").arg(currentTime).arg(pid).arg(resource));
         }
+
     }
 
     // 3. Procesar las acciones actuales del ciclo
@@ -316,20 +345,25 @@ void MutexSynchronizer::updateSimulation() {
         if (index == -1) continue;
 
         if (processesExecutedFromBlocked.contains(pid)) {
-            // Este proceso ya ejecutó una acción bloqueada, su acción actual la bloqueamos
             newBlockedQueue.enqueue(action);
-            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+            
+            appendLog(QString("T%1 | %2 BLOQUEADO por acción anterior").arg(currentTime).arg(pid));
         } else {
-            // Intentar ejecutar acción actual si recurso libre
             if (resourceMutexes.value(resource, true)) {
                 resourceMutexes[resource] = false;
                 resourceOwners[resource] = pid;
-                drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation); // verde éxito
+                drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation);
+                
+                appendLog(QString("T%1 | %2 ACCEDE %3 -> %4").arg(currentTime).arg(pid).arg(resource).arg(operation));
             } else {
                 newBlockedQueue.enqueue(action);
-                drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+                drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING");
+                
+                appendLog(QString("T%1 | %2 BLOQUEADO esperando %3").arg(currentTime).arg(pid).arg(resource));
             }
         }
+
     }
 
     // 4. Actualizar la cola de bloqueados con la nueva
@@ -382,6 +416,7 @@ void MutexSynchronizer::updateSimulation() {
 
     // 7. Incrementar tiempo y actualizar etiqueta
     currentTime++;
+    appendLog("-----------------------");
     currentTimeLabel->setPlainText(QString("Tiempo: %1").arg(currentTime));
 
     bool noMoreActions = true;
@@ -398,11 +433,17 @@ void MutexSynchronizer::updateSimulation() {
         stopSimulation();
         currentTimeLabel->setPlainText(currentTimeLabel->toPlainText() + " END");
         semaphoreStatusLabel->setPlainText(
-        QString("Recursos disponibles: %1/%2").arg(totalResources).arg(totalResources)
-    );
+        QString("Recursos disponibles: %1/%2").arg(totalResources).arg(totalResources));
+        appendLog("---- SIMULACIÓN FINALIZADA ----");
     }
    
 }
+
+void MutexSynchronizer::appendLog(const QString& line) {
+    logWidget->append(line);
+    logWidget->verticalScrollBar()->setValue(logWidget->verticalScrollBar()->maximum());
+}
+
 
 
 void MutexSynchronizer::stopSimulation() {
