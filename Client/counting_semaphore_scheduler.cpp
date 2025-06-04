@@ -56,18 +56,18 @@ void CountingSemaphoreScheduler::setupSidePanel(QWidget *parent) {
     sidePanelLayout->setContentsMargins(10, 10, 10, 10);
     
     // Título del panel
-    QLabel *panelTitle = new QLabel("📊 INFORMACIÓN EN TIEMPO REAL");
+    QLabel *panelTitle = new QLabel("INFORMACIÓN EN TIEMPO REAL");
     panelTitle->setStyleSheet("QLabel { font-size: 14px; font-weight: bold; color: #2c3e50; margin-bottom: 10px; }");
     panelTitle->setAlignment(Qt::AlignCenter);
     sidePanelLayout->addWidget(panelTitle);
     
     // Tiempo actual
-    currentTimeDisplayLabel = new QLabel("⏱️ Tiempo Actual: 0");
+    currentTimeDisplayLabel = new QLabel("Tiempo Actual: 0");
     currentTimeDisplayLabel->setStyleSheet("QLabel { font-size: 12px; font-weight: bold; color: #27ae60; background-color: #ecf0f1; padding: 5px; border-radius: 3px; }");
     sidePanelLayout->addWidget(currentTimeDisplayLabel);
     
     // Estado de semáforos
-    QGroupBox *semaphoreGroup = new QGroupBox("🎯 Estado de Semáforos");
+    QGroupBox *semaphoreGroup = new QGroupBox("Estado de Semáforos");
     semaphoreGroup->setStyleSheet(
         "QGroupBox { "
         "   font-weight: bold; "
@@ -103,7 +103,7 @@ void CountingSemaphoreScheduler::setupSidePanel(QWidget *parent) {
     sidePanelLayout->addWidget(semaphoreGroup);
     
     // Lista de procesos con widgets expandibles
-    QGroupBox *processGroup = new QGroupBox("👥 Procesos y Acciones Pendientes");
+    QGroupBox *processGroup = new QGroupBox("Procesos y Acciones Pendientes");
     processGroup->setStyleSheet(
         "QGroupBox { "
         "   font-weight: bold; "
@@ -155,7 +155,7 @@ void CountingSemaphoreScheduler::setupSidePanel(QWidget *parent) {
     sidePanelLayout->addWidget(processGroup);
     
     // Lista de recursos
-    QGroupBox *resourceGroup = new QGroupBox("📦 Estado de Recursos");
+    QGroupBox *resourceGroup = new QGroupBox("Estado de Recursos");
     resourceGroup->setStyleSheet(
         "QGroupBox { "
         "   font-weight: bold; "
@@ -288,23 +288,23 @@ void CountingSemaphoreScheduler::setupInformationPanel() {
         QPen(Qt::darkGray, 2), QBrush(QColor(255, 248, 220)));
     
     // Título principal
-    QGraphicsTextItem *title = ganttScene->addText("🔢 SIMULACIÓN SEMÁFORO DE CONTEO", 
+    QGraphicsTextItem *title = ganttScene->addText("SIMULACIÓN SEMÁFORO DE CONTEO", 
         QFont("Arial", 14, QFont::Bold));
     title->setPos(20, 10);
     title->setDefaultTextColor(QColor(139, 69, 19));
     
     // Tiempo actual
-    currentTimeLabel = ganttScene->addText("⏱️ Tiempo: 0", QFont("Arial", 12, QFont::Bold));
+    currentTimeLabel = ganttScene->addText("Tiempo: 0", QFont("Arial", 12, QFont::Bold));
     currentTimeLabel->setPos(20, 40);
     currentTimeLabel->setDefaultTextColor(QColor(0, 100, 0));
     
     // Estado de recursos
-    resourceStatusLabel = ganttScene->addText("📊 Estado de recursos", QFont("Arial", 12, QFont::Bold));
+    resourceStatusLabel = ganttScene->addText("Estado de recursos", QFont("Arial", 12, QFont::Bold));
     resourceStatusLabel->setPos(200, 40);
     resourceStatusLabel->setDefaultTextColor(QColor(0, 100, 150));
     
     // Acciones pendientes
-    pendingActionsLabel = ganttScene->addText("⏳ Acciones pendientes: 0", QFont("Arial", 12));
+    pendingActionsLabel = ganttScene->addText("Acciones pendientes: 0", QFont("Arial", 12));
     pendingActionsLabel->setPos(20, 70);
     pendingActionsLabel->setDefaultTextColor(QColor(150, 0, 150));
 }
@@ -313,7 +313,7 @@ void CountingSemaphoreScheduler::setupLegend() {
     int legendY = 105;
     
     // Título de leyenda
-    QGraphicsTextItem *legendTitle = ganttScene->addText("📋 LEYENDA:", 
+    QGraphicsTextItem *legendTitle = ganttScene->addText("LEYENDA:", 
         QFont("Arial", 10, QFont::Bold));
     legendTitle->setPos(20, legendY);
     legendTitle->setDefaultTextColor(Qt::black);
@@ -332,13 +332,13 @@ void CountingSemaphoreScheduler::setupLegend() {
     
     // Gris - Sin acción
     ganttScene->addRect(450, legendY + 3, 20, 15, QPen(Qt::black), QBrush(Qt::lightGray));
-    QGraphicsTextItem *noActionText = ganttScene->addText("⚪ SIN ACCIÓN", QFont("Arial", 8));
+    QGraphicsTextItem *noActionText = ganttScene->addText("SIN ACCIÓN", QFont("Arial", 8));
     noActionText->setPos(475, legendY);
     noActionText->setDefaultTextColor(Qt::black);
     
     // Amarillo - Acción pendiente
     ganttScene->addRect(580, legendY + 3, 20, 15, QPen(Qt::black), QBrush(QColor(255, 255, 0)));
-    QGraphicsTextItem *pendingText = ganttScene->addText("⏳ ACCIÓN PENDIENTE", QFont("Arial", 8));
+    QGraphicsTextItem *pendingText = ganttScene->addText("ACCIÓN PENDIENTE", QFont("Arial", 8));
     pendingText->setPos(605, legendY);
     pendingText->setDefaultTextColor(Qt::black);
 }
@@ -404,11 +404,6 @@ void CountingSemaphoreScheduler::setResources(const QList<Resource>& newResource
 
 void CountingSemaphoreScheduler::setActions(const QList<Action>& newActions) {
     actions = newActions;
-    // Ordenar acciones por ciclo
-    std::sort(actions.begin(), actions.end(),
-              [](const Action& a, const Action& b) {
-                  return a.cycle < b.cycle;
-              });
 }
 
 void CountingSemaphoreScheduler::assignProcessColors() {
@@ -439,7 +434,7 @@ void CountingSemaphoreScheduler::initializeResources() {
 void CountingSemaphoreScheduler::updateSimulation() {
     // Avanzar al siguiente ciclo
     currentTime++;
-    addToLog(QString("\n🔄 Iniciando ciclo %1").arg(currentTime));
+    addToLog(QString("\nIniciando ciclo %1").arg(currentTime));
     
     // Procesar acciones para este nuevo ciclo
     processCurrentCycleActions();
@@ -789,12 +784,12 @@ void CountingSemaphoreScheduler::processCurrentCycleActions() {
                 activeAction.endTime = currentTime + 1;
                 activeActions[pid] = activeAction;
                 
-                addToLog(QString("✅ Concediendo acceso nuevo a \"%1\" para \"%2\" en tiempo %3")
+                addToLog(QString("Concediendo acceso nuevo a \"%1\" para \"%2\" en tiempo %3")
                          .arg(pid).arg(action.resource).arg(currentTime));
             } else {
                 pendingActions[pid] = action;
                 currentCycleWaiting[pid] = action;
-                addToLog(QString("❌ Proceso \"%1\" esperando \"%2\" en tiempo %3 (recurso no disponible, disponibles: %4)")
+                addToLog(QString("Proceso \"%1\" esperando \"%2\" en tiempo %3 (recurso no disponible, disponibles: %4)")
                          .arg(pid).arg(action.resource).arg(currentTime)
                          .arg(resourceCounters[action.resource]));
             }
@@ -934,7 +929,7 @@ void CountingSemaphoreScheduler::drawAllProcessStates() {
             // Proceso tiene acceso
             Action accessAction = currentCycleAccess[p.pid];
             stateColor = Qt::green;
-            stateText = "✅";
+            stateText = "";
             tooltip = QString("Proceso: %1\nAcceso a: %2\nOperación: %3\nTiempo: %4")
                 .arg(p.pid)
                 .arg(accessAction.resource)
@@ -944,7 +939,7 @@ void CountingSemaphoreScheduler::drawAllProcessStates() {
             // Proceso está esperando
             Action waitingAction = currentCycleWaiting[p.pid];
             stateColor = Qt::red;
-            stateText = "❌";
+            stateText = "";
             tooltip = QString("Proceso: %1\nEsperando: %2\nOperación: %3\nTiempo: %4")
                 .arg(p.pid)
                 .arg(waitingAction.resource)
@@ -953,7 +948,7 @@ void CountingSemaphoreScheduler::drawAllProcessStates() {
         } else {
             // Sin acción
             stateColor = Qt::lightGray;
-            stateText = "⚪";
+            stateText = "";
             tooltip = QString("Proceso: %1\nSin acción\nTiempo: %2")
                 .arg(p.pid)
                 .arg(currentTime);
@@ -1017,7 +1012,7 @@ void CountingSemaphoreScheduler::drawProcessPendingActionsInGantt(const QString&
             if (action.cycle <= currentTime) {
                 // Acción que está esperando recursos
                 actionColor = QColor(255, 193, 7); // Amarillo
-                actionSymbol = "⏳";
+                actionSymbol = "";
                 actionTooltip = QString("Proceso: %1\nEsperando recurso: %2\nOperación: %3")
                     .arg(pid)
                     .arg(action.resource)
@@ -1025,7 +1020,7 @@ void CountingSemaphoreScheduler::drawProcessPendingActionsInGantt(const QString&
             } else {
                 // Acción programada para el futuro
                 actionColor = QColor(108, 117, 125); // Gris
-                actionSymbol = "📅";
+                actionSymbol = "";
                 actionTooltip = QString("Proceso: %1\nProgramada para t=%2\nRecurso: %3\nOperación: %4")
                     .arg(pid)
                     .arg(action.cycle)
@@ -1051,10 +1046,10 @@ void CountingSemaphoreScheduler::drawProcessPendingActionsInGantt(const QString&
 
 void CountingSemaphoreScheduler::updateInformationLabels() {
     // Actualizar tiempo
-    currentTimeLabel->setPlainText(QString("⏱️ Tiempo: %1").arg(currentTime));
+    currentTimeLabel->setPlainText(QString("Tiempo: %1").arg(currentTime));
     
     // Actualizar estado de recursos
-    QString resourceStatus = "📊 Recursos: ";
+    QString resourceStatus = "Recursos: ";
     for (const Resource& r : resources) {
         int available = resourceCounters[r.name];
         int total = r.counter;
@@ -1063,7 +1058,7 @@ void CountingSemaphoreScheduler::updateInformationLabels() {
     resourceStatusLabel->setPlainText(resourceStatus);
     
     // Actualizar acciones pendientes
-    pendingActionsLabel->setPlainText(QString("⏳ Acciones pendientes: %1").arg(pendingActions.size()));
+    pendingActionsLabel->setPlainText(QString("Acciones pendientes: %1").arg(pendingActions.size()));
 }
 
 bool CountingSemaphoreScheduler::checkSimulationComplete() {
