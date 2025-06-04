@@ -9,7 +9,8 @@ HEADERS += client.h \
            srt_scheduler.h \
            counting_semaphore_scheduler.h \
            semaforo_conteo.h \
-           mutex_synchronizer.h
+           mutex_synchronizer.h \
+           visualize_files.h
 
 SOURCES += client.cpp \
            priority_scheduler.cpp \
@@ -19,4 +20,5 @@ SOURCES += client.cpp \
            srt_scheduler.cpp \
            counting_semaphore_scheduler.cpp \
            semaforo_conteo.cpp \
-           mutex_synchronizer.cpp
+           mutex_synchronizer.cpp \
+           visualize_files.cpp

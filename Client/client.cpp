@@ -15,6 +15,7 @@
 #include <QTextEdit>      
 #include <QClipboard>     
 #include <QTimer>  
+#include "visualize_files.h"
 
 SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     resize(800, 600);
@@ -104,6 +105,15 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     openFileLabel->hide();
     scheduleLayout->addWidget(openFileLabel);
 
+    QPushButton *visualizeProcessBtn = new QPushButton("Ver información cargada", this);    
+    connect(visualizeProcessBtn, &QPushButton::clicked, [=]() {        
+        QWidget* onlyProcesses = createProcessTableOnly(processList);
+        onlyProcesses->setWindowTitle("Procesos cargados");
+        onlyProcesses->resize(650, 400);
+        onlyProcesses->show();
+    });
+    scheduleLayout->addWidget(visualizeProcessBtn);
+
     mainLayout->addWidget(scheduleOptionsWidget);
     scheduleOptionsWidget->hide();
 
@@ -150,6 +160,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     semaphoreTitleFont.setPointSize(14);
     semaphoreTitle->setFont(semaphoreTitleFont);
     semaphoreLayout->addWidget(semaphoreTitle);
+    semaphoreLayout->addSpacing(20);
 
     syncProcessStatusLabel = new QLabel("Procesos: No cargado", this);
     syncResourceStatusLabel = new QLabel("Recursos: No cargado", this);
@@ -158,17 +169,35 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     QPushButton *loadResourcesBtn = new QPushButton("Cargar archivo de Recursos (.txt)", this);
     QPushButton *loadActionsBtn = new QPushButton("Cargar archivo de Acciones (.txt)", this);
 
-    semaphoreLayout->addWidget(syncProcessStatusLabel);
-    semaphoreLayout->addWidget(syncResourceStatusLabel);
-    semaphoreLayout->addWidget(syncActionStatusLabel);
+    QHBoxLayout *processLayout = new QHBoxLayout();
+    processLayout->addWidget(syncProcessStatusLabel);
+    processLayout->addStretch();
+    processLayout->addWidget(loadProcessesBtn);
+    semaphoreLayout->addLayout(processLayout);
 
-    semaphoreLayout->addWidget(loadProcessesBtn);
-    semaphoreLayout->addWidget(loadResourcesBtn);
-    semaphoreLayout->addWidget(loadActionsBtn);
+    QHBoxLayout *resourceLayout = new QHBoxLayout();
+    resourceLayout->addWidget(syncResourceStatusLabel);
+    resourceLayout->addStretch();
+    resourceLayout->addWidget(loadResourcesBtn);
+    semaphoreLayout->addLayout(resourceLayout);
+
+    QHBoxLayout *actionLayout = new QHBoxLayout();
+    actionLayout->addWidget(syncActionStatusLabel);
+    actionLayout->addStretch();
+    actionLayout->addWidget(loadActionsBtn);
+    semaphoreLayout->addLayout(actionLayout);
 
     connect(loadProcessesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncProcessesClicked);
     connect(loadResourcesBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncResourcesClicked);
     connect(loadActionsBtn, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncActionsClicked);
+
+    semaphoreLayout->addSpacing(20);
+    QPushButton *visualizeInfoBtn = new QPushButton("Ver información cargada", this);
+    connect(visualizeInfoBtn, &QPushButton::clicked, [=]() {        
+        VisualizeFiles *viewer = new VisualizeFiles(syncProcessList, syncResourceList, syncActionList, this);
+        viewer->exec();
+    });
+    semaphoreLayout->addWidget(visualizeInfoBtn);
 
     QHBoxLayout *buttonLayout_4 = new QHBoxLayout();
 
@@ -204,6 +233,7 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     titleFont.setPointSize(14);
     mutexTitle->setFont(titleFont);
     mutexLayout->addWidget(mutexTitle);
+    mutexLayout->addSpacing(20);
 
     syncProcessStatusLabel2 = new QLabel("Procesos: No cargado", this);
     syncResourceStatusLabel2 = new QLabel("Recursos: No cargado", this);
@@ -213,17 +243,35 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
     QPushButton *loadResourcesBtn2 = new QPushButton("Cargar archivo de Recursos (.txt)", this);
     QPushButton *loadActionsBtn2 = new QPushButton("Cargar archivo de Acciones (.txt)", this);
 
-    mutexLayout->addWidget(syncProcessStatusLabel2);
-    mutexLayout->addWidget(syncResourceStatusLabel2);
-    mutexLayout->addWidget(syncActionStatusLabel2);
+    QHBoxLayout *processLayout2 = new QHBoxLayout();
+    processLayout2->addWidget(syncProcessStatusLabel2);
+    processLayout2->addStretch();
+    processLayout2->addWidget(loadProcessesBtn2);
+    mutexLayout->addLayout(processLayout2);
 
-    mutexLayout->addWidget(loadProcessesBtn2);
-    mutexLayout->addWidget(loadResourcesBtn2);
-    mutexLayout->addWidget(loadActionsBtn2);
+    QHBoxLayout *resourceLayout2 = new QHBoxLayout();
+    resourceLayout2->addWidget(syncResourceStatusLabel2);
+    resourceLayout2->addStretch();
+    resourceLayout2->addWidget(loadResourcesBtn2);
+    mutexLayout->addLayout(resourceLayout2);
+
+    QHBoxLayout *actionLayout2 = new QHBoxLayout();
+    actionLayout2->addWidget(syncActionStatusLabel2);
+    actionLayout2->addStretch();
+    actionLayout2->addWidget(loadActionsBtn2);
+    mutexLayout->addLayout(actionLayout2);
 
     connect(loadProcessesBtn2, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncProcessesClicked);
     connect(loadResourcesBtn2, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncResourcesClicked);
     connect(loadActionsBtn2, &QPushButton::clicked, this, &SimulatorClient::onLoadSyncActionsClicked);
+
+    mutexLayout->addSpacing(20);
+    QPushButton *visualizeInfoBtn2 = new QPushButton("Ver información cargada", this);
+    connect(visualizeInfoBtn2, &QPushButton::clicked, [=]() {        
+        VisualizeFiles *viewer = new VisualizeFiles(syncProcessList, syncResourceList, syncActionList, this);
+        viewer->exec();
+    });
+    mutexLayout->addWidget(visualizeInfoBtn2);
 
     QPushButton *startSimMut = new QPushButton("Iniciar Simulación con Mutex", this);
 
@@ -912,6 +960,12 @@ void SimulatorClient::onSchedulingSimClicked() {
         if (schedulingTypesToUse.contains("Priority")) {
             runPrioritySimulation();
         } else if (schedulingTypesToUse.contains("Round Robin")){
+            if (quantumInput->text().isEmpty()) {
+                simulationWidget->hide();
+                scheduleOptionsWidget->show();
+                QMessageBox::warning(this, "Error", "Debe asignar un valor de quantum");
+                return;
+            }
             runRRSimulation();
         } else if (schedulingTypesToUse.contains("First In First Out")){
             runFiFoSimulation();
@@ -965,6 +1019,11 @@ void SimulatorClient::calculateSchedulingMetrics() {
     }
     
     if (schedulingTypesToUse.contains("Round Robin")){
+        if (quantumInput->text().isEmpty()) {
+            scheduleOptionsWidget->show();
+            QMessageBox::warning(this, "Error", "Debe asignar un valor de quantum");
+            return;
+        }
         rrScheduler->setProcesses(processList);
         int quantum = quantumInput->text().toInt();
         rrScheduler->setQuantum(quantum);
