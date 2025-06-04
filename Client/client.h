@@ -13,7 +13,6 @@
 #include "srt_scheduler.h"
 #include "priority_scheduler.h"
 #include "rr_scheduler.h"
-#include "binary_semaphore_scheduler.h"
 #include "counting_semaphore_scheduler.h"
 #include "mutex_synchronizer.h"
 
@@ -32,7 +31,6 @@ public slots:
     void onAddFileClicked_Process();
     void onSimulationFinished(double avgWaitingTime);
     void OnMutexClicked();
-    void onBinarySemaphoreSimClicked();
     void onCountingSemaphoreSimClicked();
     void onSemaphoreSimulationFinished(double avgExecutionTime);
     void onMutexSimClicked();
@@ -117,7 +115,6 @@ private:
     PriorityScheduler *priorityScheduler;
     
     // Synchronizers
-    BinarySemaphoreScheduler *binarySemaphoreScheduler;
     CountingSemaphoreScheduler *countingSemaphoreScheduler;
     MutexSynchronizer *mutexSynchronizer;
 

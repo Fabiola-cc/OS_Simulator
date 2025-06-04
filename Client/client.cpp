@@ -167,14 +167,11 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
 
     QHBoxLayout *buttonLayout_4 = new QHBoxLayout();
 
-    QPushButton *startSemSimBtn = new QPushButton("Iniciar Simulación Semaforo Binario", this);
     QPushButton *startSemSimBtn_2 = new QPushButton("Iniciar Simulación Semaforo de Conteo", this);
 
     // Conectar los botones a los nuevos métodos
-    connect(startSemSimBtn, &QPushButton::clicked, this, &SimulatorClient::onBinarySemaphoreSimClicked);
     connect(startSemSimBtn_2, &QPushButton::clicked, this, &SimulatorClient::onCountingSemaphoreSimClicked);
 
-    buttonLayout_4->addWidget(startSemSimBtn);
     buttonLayout_4->addWidget(startSemSimBtn_2);
 
     semaphoreLayout->addLayout(buttonLayout_4);
@@ -347,9 +344,6 @@ SimulatorClient::SimulatorClient(QWidget *parent) : QWidget(parent) {
             this, &SimulatorClient::onSimulationFinished);
     
     // Inicializar schedulers de semáforos
-    binarySemaphoreScheduler = new BinarySemaphoreScheduler(this);
-    connect(binarySemaphoreScheduler, &BinarySemaphoreScheduler::simulationFinished,
-            this, &SimulatorClient::onSemaphoreSimulationFinished);
 
     countingSemaphoreScheduler = new CountingSemaphoreScheduler(this);
     connect(countingSemaphoreScheduler, &CountingSemaphoreScheduler::simulationFinished,
@@ -568,25 +562,6 @@ bool SimulatorClient::validateSyncDataMutex() {
 
 
 
-void SimulatorClient::onBinarySemaphoreSimClicked() {
-    if (!validateSyncData()) {
-        return;
-    }
-
-    // Ocultar pantalla actual y mostrar simulación
-    semaphoreWidget->hide();
-    semaphoreSimulationWidget->show();
-
-    // Configurar el scheduler
-    binarySemaphoreScheduler->setProcesses(syncProcessList);
-    binarySemaphoreScheduler->setResources(syncResourceList);
-    binarySemaphoreScheduler->setActions(syncActionList);
-    binarySemaphoreScheduler->setupGanttChart(semaphoreGanttView);
-    
-    // Iniciar simulación
-    binarySemaphoreScheduler->startSimulation();
-}
-
 void SimulatorClient::onCountingSemaphoreSimClicked() {
     if (!validateSyncData()) {
         return;
@@ -596,13 +571,41 @@ void SimulatorClient::onCountingSemaphoreSimClicked() {
     semaphoreWidget->hide();
     semaphoreSimulationWidget->show();
 
-    // Configurar el scheduler
+    // Configurar el scheduler con los datos
     countingSemaphoreScheduler->setProcesses(syncProcessList);
     countingSemaphoreScheduler->setResources(syncResourceList);
     countingSemaphoreScheduler->setActions(syncActionList);
+    
+    // Configurar el diagrama de Gantt
     countingSemaphoreScheduler->setupGanttChart(semaphoreGanttView);
     
-    // Iniciar simulación
+    // Configurar el panel lateral y agregarlo al layout
+    QHBoxLayout *mainLayout = qobject_cast<QHBoxLayout*>(semaphoreSimulationWidget->layout());
+    if (mainLayout) {
+        // Limpiar cualquier panel lateral existente
+        while (mainLayout->count() > 1) {
+            QLayoutItem *item = mainLayout->takeAt(1);
+            if (item && item->widget()) {
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+        
+        // Crear y configurar el nuevo panel lateral
+        countingSemaphoreScheduler->setupSidePanel(semaphoreSimulationWidget);
+        
+        // Buscar el panel lateral recién creado y agregarlo al layout
+        QList<QWidget*> children = semaphoreSimulationWidget->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+        for (QWidget *child : children) {
+            // El panel lateral debería ser el que tiene un ancho fijo de 350
+            if (child->minimumWidth() == 350 || child->maximumWidth() == 350) {
+                mainLayout->addWidget(child, 1); // Proporción 1 para el panel lateral
+                break;
+            }
+        }
+    }
+    
+    // Iniciar simulación (esto creará los widgets de procesos)
     countingSemaphoreScheduler->startSimulation();
 }
 
@@ -642,35 +645,48 @@ void SimulatorClient::onMutexSimulationFinished(double avgExecutionTime) {
 }
 
 void SimulatorClient::setupSemaphoreSimulationWidget() {
-    QVBoxLayout *semSimLayout = new QVBoxLayout(semaphoreSimulationWidget);
+    // Layout principal horizontal para dividir en dos áreas
+    QHBoxLayout *mainSimLayout = new QHBoxLayout(semaphoreSimulationWidget);
+    mainSimLayout->setSpacing(10);
+    mainSimLayout->setContentsMargins(10, 10, 10, 10);
+    
+    // Área izquierda para el diagrama de Gantt
+    QWidget *ganttArea = new QWidget();
+    QVBoxLayout *ganttLayout = new QVBoxLayout(ganttArea);
     
     // Título de la simulación
-    QLabel *semSimTitle = new QLabel("Simulación de Sincronización con Semáforos", this);
+    QLabel *semSimTitle = new QLabel("Simulación de Sincronización con Semáforos de Conteo", this);
     semSimTitle->setAlignment(Qt::AlignCenter);
     QFont font = semSimTitle->font();
     font.setBold(true);
     font.setPointSize(14);
     semSimTitle->setFont(font);
-    semSimLayout->addWidget(semSimTitle);
+    ganttLayout->addWidget(semSimTitle);
     
     // Vista para el diagrama de Gantt de semáforos
     semaphoreGanttView = new QGraphicsView(this);
-    semaphoreGanttView->setFixedHeight(600);
-    semSimLayout->addWidget(semaphoreGanttView);
+    semaphoreGanttView->setMinimumHeight(400);
+    ganttLayout->addWidget(semaphoreGanttView);
     
     // Etiqueta para mostrar métricas
     semaphoreMetricsLabel = new QLabel(this);
     semaphoreMetricsLabel->setAlignment(Qt::AlignCenter);
-    semSimLayout->addWidget(semaphoreMetricsLabel);
+    ganttLayout->addWidget(semaphoreMetricsLabel);
     
     // Botón para regresar
     QPushButton *semBackButton = new QPushButton("Regresar al menú de semáforos", this);
-    semSimLayout->addWidget(semBackButton);
+    ganttLayout->addWidget(semBackButton);
     
     connect(semBackButton, &QPushButton::clicked, [=]() {
         semaphoreSimulationWidget->hide();
         semaphoreWidget->show();
     });
+    
+    // Agregar el área del Gantt al layout principal
+    mainSimLayout->addWidget(ganttArea, 2); // Proporción 2
+    
+    // El panel lateral se agregará automáticamente cuando se configure el scheduler
+    // mediante el método setupSidePanel que llamaremos desde onCountingSemaphoreSimClicked
 }
 
 void SimulatorClient::setupMutexSimulationWidget() {
