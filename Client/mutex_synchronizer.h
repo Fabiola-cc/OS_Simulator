@@ -25,6 +25,11 @@ public:
     void stopSimulation();
     void processAction(const Action&);
     int resourceIndexByName(const QString&) const;
+    void setupInformationPanel();
+    void setupLegend();
+    void setupProcessRows(int startY);
+    void setupTimeGrid(int startY, int endY);
+    void drawAccessBar(const QString& pid, int index, int time, QColor color, const QString& operation); 
 
 signals:
     void simulationFinished(double averageExecutionTime);
@@ -41,15 +46,15 @@ private:
     int currentTime;
     QGraphicsTextItem *currentTimeLabel;
     QGraphicsTextItem *resourceStatusLabel;
+    QMap<QString, bool> resourceMutexes;
 
 
     QList<Process> processes;
     QList<Resource> resources;
     QList<Action> actions;
-    QString currentMutexOwner; 
+    QMap<QString, QString> resourceOwners; 
 
     QQueue<Process> readyQueue;
-    QQueue<Process> blockedQueue;
     QMap<QString, QColor> processColors;
     QMap<QString, int> processExecutionTimes;
     QMap<QString, int> processStartTimes;
@@ -58,10 +63,16 @@ private:
     int currentProcessRemainingTime;
     bool hasCurrentProcess;
 
-    QMap<QString, bool> resourceMutexes;
     QMap<QString, Process*> processMap;
     QMap<QString, Resource*> resourceMap;
     QList<ActiveMutexAction> activeMutexActions;
+    QQueue<Action> blockedQueue;
+
+    QGraphicsTextItem *semaphoreStatusLabel;
+    QGraphicsTextItem *blockedQueueLabel;
+    QGraphicsTextItem *currentProcessLabel;
+    QGraphicsTextItem *resourceIndicatorLabel;
+    QGraphicsTextItem* resourceUsageLabel;
 
     void assignProcessColors();
     void initializeResources();

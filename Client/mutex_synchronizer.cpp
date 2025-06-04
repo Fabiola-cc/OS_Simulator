@@ -33,43 +33,149 @@ void MutexSynchronizer::setupGanttChart(QGraphicsView *view) {
     ganttView = view;
     ganttView->setScene(ganttScene);
     ganttView->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-    ganttView->setMinimumSize(500, 300); 
-    ganttView->resize(500, 300);
     ganttView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-    ganttView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
-
+    ganttView->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    
     ganttScene->clear();
+    
+    // Calcular dimensiones mejoradas
+    int headerHeight = 140;  // Más espacio para contador de semáforo
+    int processRowHeight = 50;
+    int totalHeight = headerHeight + (processes.size() * processRowHeight) + 100;
+    
+    ganttScene->setSceneRect(0, 0, 6000, totalHeight);
+    
+    // === PANEL DE INFORMACIÓN SUPERIOR ===
+    setupInformationPanel();
+    
+    // === LEYENDA DE ESTADOS ===
+    setupLegend();
+    
+    // === FILAS DE PROCESOS ===
+    setupProcessRows(headerHeight);
+    
+    // === LÍNEAS DE TIEMPO ===
+    setupTimeGrid(headerHeight, totalHeight - 50);
+}
 
-    currentTimeLabel = ganttScene->addText("Current Time: 0");
-    currentTimeLabel->setPos(10, 0);
+void MutexSynchronizer::setupInformationPanel() {
+    // Fondo del panel de información
+    QGraphicsRectItem *infoPanelBg = ganttScene->addRect(0, 0, 6000, 100, 
+        QPen(Qt::darkGray, 2), QBrush(QColor(255, 248, 220))); // Color crema
+    
+    // Título principal
+    QGraphicsTextItem *title = ganttScene->addText("SIMULACIÓN MUTEX", 
+        QFont("Arial", 14, QFont::Bold));
+    title->setPos(20, 10);
+    title->setDefaultTextColor(QColor(139, 69, 19)); // Marrón
+    
+    // Tiempo actual
+    currentTimeLabel = ganttScene->addText("Tiempo: 0", QFont("Arial", 12, QFont::Bold));
+    currentTimeLabel->setPos(20, 40);
+    currentTimeLabel->setDefaultTextColor(QColor(0, 100, 0));
+    
+    // Estado del semáforo con contador visual
+    semaphoreStatusLabel = ganttScene->addText("Recursos disponibles: 0/0", QFont("Arial", 12, QFont::Bold));
+    semaphoreStatusLabel->setPos(200, 40);
+    semaphoreStatusLabel->setDefaultTextColor(QColor(0, 100, 150));
+    
+    // Cola de bloqueados
+    blockedQueueLabel = ganttScene->addText("Procesos bloqueados: 0", QFont("Arial", 12));
+    blockedQueueLabel->setPos(450, 40);
+    blockedQueueLabel->setDefaultTextColor(QColor(150, 0, 0));
+    
+    // Indicador visual de recursos (será creado dinámicamente)
+    resourceIndicatorLabel = ganttScene->addText("Estado recursos: ", QFont("Arial", 10));
+    resourceIndicatorLabel->setPos(250, 70);
+    resourceIndicatorLabel->setDefaultTextColor(QColor(100, 100, 100));
 
-    resourceStatusLabel = ganttScene->addText("Resource R1: Libre");
-    resourceStatusLabel->setPos(200, 0);
+    resourceUsageLabel = ganttScene->addText("", QFont("Courier New", 10));
+    resourceUsageLabel->setPos(370, 70);
+    resourceUsageLabel->setDefaultTextColor(Qt::darkBlue);
+}
 
-    int sceneHeight = 30 + processes.size() * 40 + 40; 
-    ganttScene->setSceneRect(0, 0, 5000, sceneHeight);
-
-    for (int i = 0; i < processes.size(); i++) {
-        int y = 30 + i * 40;
-        ganttScene->addLine(0, y, 5000, y, QPen(Qt::white));
-
-        QString pidText = processes[i].pid;
-
-        QGraphicsTextItem *processLabel = ganttScene->addText(pidText);
-        processLabel->setPos(5, y);
-    }
-
-    // Etiquetas de tiempo desplazadas 30 px a la derecha para no superponerse con procesos
-    int timeLabelY = 30 + processes.size() * 40;
-    for (int i = 0; i <= 100; i++) {
-        int x = i * 30;
-        ganttScene->addLine(x, timeLabelY, x, sceneHeight, QPen(Qt::white));
-
-        QGraphicsTextItem *timeLabel = ganttScene->addText(QString::number(i));
-        timeLabel->setPos(x + 30 - 5, timeLabelY);  // Muevo +30 px a la derecha
+void MutexSynchronizer::setupLegend() {
+    int legendY = 105;
+    
+    // Título de leyenda
+    QGraphicsTextItem *legendTitle = ganttScene->addText("📋 LEYENDA DE ESTADOS:", 
+        QFont("Arial", 10, QFont::Bold));
+    legendTitle->setPos(20, legendY);
+    legendTitle->setDefaultTextColor(Qt::black);
+    
+    // Estados con colores y símbolos específicos para semáforo de conteo
+    struct LegendItem {
+        QColor color;
+        QString symbol;
+        QString description;
+        int x;
+    };
+    
+    QList<LegendItem> legendItems = {
+        {QColor(100, 200, 100), "▶️", "ACCESED", 200},
+        {QColor(255, 100, 100), "▶️", "WAITING", 470},
+    };
+    
+    for (const auto& item : legendItems) {
+        // Rectángulo de color
+        ganttScene->addRect(item.x, legendY + 3, 20, 15, 
+            QPen(Qt::black), QBrush(item.color));
+        
+        // Texto explicativo
+        QGraphicsTextItem *text = ganttScene->addText(
+            item.symbol + " " + item.description, QFont("Arial", 8));
+        text->setPos(item.x + 25, legendY);
+        text->setDefaultTextColor(Qt::black);
     }
 }
 
+void MutexSynchronizer::setupProcessRows(int startY) {
+    for (int i = 0; i < processes.size(); i++) {
+        int y = startY + (i * 50);
+        
+        // Línea separadora
+        ganttScene->addLine(0, y, 6000, y, QPen(QColor(200, 200, 200)));
+        
+        // Etiqueta del proceso con fondo
+        QGraphicsRectItem *labelBg = ganttScene->addRect(5, y + 5, 80, 30, 
+            QPen(Qt::black), QBrush(processColors[processes[i].pid]));
+        
+        QGraphicsTextItem *processLabel = ganttScene->addText(
+            processes[i].pid, QFont("Arial", 10, QFont::Bold));
+        processLabel->setPos(10, y + 10);
+        processLabel->setDefaultTextColor(Qt::white);
+        
+        // Información del proceso
+        QString processInfo = QString("BT:%1 AT:%2 P:%3")
+            .arg(processes[i].burstTime)
+            .arg(processes[i].arrivalTime)
+            .arg(processes[i].priority);
+        
+        QGraphicsTextItem *infoLabel = ganttScene->addText(
+            processInfo, QFont("Arial", 8));
+        infoLabel->setPos(90, y + 15);
+        infoLabel->setDefaultTextColor(QColor(80, 80, 80));
+    }
+}
+
+void MutexSynchronizer::setupTimeGrid(int startY, int endY) {
+    // Líneas verticales y etiquetas de tiempo
+    for (int i = 0; i <= 120; i++) {
+        int x = 200 + (i * 40);  // Desplazado para dar espacio a etiquetas
+        
+        // Línea vertical
+        QPen timePen = (i % 5 == 0) ? QPen(Qt::darkGray, 2) : QPen(Qt::lightGray, 1);
+        ganttScene->addLine(x, startY, x, endY, timePen);
+        
+        // Etiqueta de tiempo cada 5 unidades
+        if (i % 5 == 0) {
+            QGraphicsTextItem *timeLabel = ganttScene->addText(
+                QString::number(i), QFont("Arial", 10, QFont::Bold));
+            timeLabel->setPos(x - 8, endY + 5);
+            timeLabel->setDefaultTextColor(Qt::black);
+        }
+    }
+}
 
 
 void MutexSynchronizer::setProcesses(const QList<Process>& newProcesses) {
@@ -118,9 +224,10 @@ int MutexSynchronizer::processIndexByPid(const QString& pid) const {
 void MutexSynchronizer::initializeResources() {
     resourceMutexes.clear();
     for (const Resource& r : resources) {
-        resourceMutexes[r.name] = false; // false = unlocked
+        resourceMutexes[r.name] = true; // true = disponible
     }
 }
+
 
 void MutexSynchronizer::startSimulation() {
     readyQueue.clear();
@@ -138,136 +245,165 @@ void MutexSynchronizer::startSimulation() {
     simulationTimer->start(800);  // cada 800 ms avanza un ciclo
 }
 
+void MutexSynchronizer::drawAccessBar(const QString& pid, int index, int time, QColor color, const QString& operation) {
+    int y = 140 + index * 50;
+    int x = 200 + time * 40;
 
+    // Dibuja el rectángulo
+    ganttScene->addRect(x, y + 5, 40, 30, QPen(Qt::black), QBrush(color));
 
-// En tu clase MutexSynchronizer, agrega:
-// QSet<QString> blockedLockProcesses;
+    // Dibuja el número de recursos utilizados (para ahora, siempre 1)
+    QGraphicsTextItem *resourceNum = ganttScene->addText(operation, QFont("Arial", 8, QFont::Bold));
+    resourceNum->setPos(x + 25, y + 15);
+    resourceNum->setDefaultTextColor(Qt::black);
+}
+
 
 void MutexSynchronizer::updateSimulation() {
-    bool allDone = true;
-
-    std::cout << "Tiempo actual: " << currentTime << std::endl;
-
-    for (int i = 0; i < processes.size(); ++i) {
-        Process& p = processes[i];
-
-        if (p.arrivalTime > currentTime) {
-            allDone = false;
-            std::cout << "Proceso " << p.pid.toStdString()
-                      << " aún no ha llegado (llega en t=" << p.arrivalTime << ")" << std::endl;
-            continue;
-        }
-
-        allDone = false;
-
-        Action* action = nullptr;
-
-        if (blockedLockProcesses.contains(p.pid)) {
-            static Action pendingLockAction;
-            pendingLockAction.pid = p.pid;
-            pendingLockAction.operation = "ADQUIRE";
-            pendingLockAction.resource = "";
-            pendingLockAction.cycle = currentTime;
-            action = &pendingLockAction;
-        } else {
-            for (Action& a : actions) {
-                if (a.pid == p.pid && a.cycle == currentTime) {
-                    action = &a;
-                    break;
-                }
-            }
-        }
-
-        bool locked = false;
-        bool unlocked = false;
-        bool blocked = false;
-
-        if (action) {
-            std::cout << "Proceso " << p.pid.toStdString()
-                      << " tiene acción " << action->operation.toStdString()
-                      << " en ciclo " << currentTime << std::endl;
-
-            if (action->operation == "ADQUIRE") {
-                if (currentMutexOwner == "") {
-                    currentMutexOwner = p.pid;
-                    std::cout << "Mutex adquirido por proceso " << p.pid.toStdString() << std::endl;
-                    locked = true;
-                    blockedLockProcesses.remove(p.pid);
-                } else if (currentMutexOwner == p.pid) {
-                    blockedLockProcesses.remove(p.pid);
-                } else {
-                    blockedLockProcesses.insert(p.pid);
-                    blocked = true;
-                }
-            } else if (action->operation == "RELEASE") {
-                if (currentMutexOwner == p.pid) {
-                    currentMutexOwner = "";
-                    unlocked = true;
-                }
-            }
-        }
-
-        int x = (currentTime * 30) + 30;
-        int y = 30 + i * 40;
-
-        if (locked) {
-            QColor color = Qt::green;
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
-            ganttScene->addText("A")->setPos(x + 5, y + 5);
-        } else if (unlocked) {
-            QColor color = Qt::blue;
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
-            ganttScene->addText("R")->setPos(x + 5, y + 5);
-        } else if (blocked) {
-            QColor color = Qt::red;
-            ganttScene->addRect(x, y, 30, 30, QPen(Qt::black), QBrush(color));
-            ganttScene->addText("B")->setPos(x + 5, y + 5);
+    
+    // Obtener acciones del ciclo actual
+    QList<Action> currentActions;
+    for (const Action& action : actions) {
+        if (action.cycle == currentTime) {
+            currentActions.append(action);
         }
     }
 
-    allDone = true;
-    for (int i = 0; i < processes.size(); ++i) {
-        const Process& p = processes[i];
+    // 1. Priorizar acciones bloqueadas: tomar solo la primera acción bloqueada por proceso
+    QMap<QString, Action> firstBlockedPerProcess;  // pid -> primera acción bloqueada
+    QQueue<Action> newBlockedQueue; // nueva cola para bloquear las que no se puedan ejecutar
 
-        if (blockedLockProcesses.contains(p.pid)) {
-            allDone = false;
+    while (!blockedQueue.isEmpty()) {
+        Action action = blockedQueue.dequeue();
+        QString pid = action.pid;
+
+        if (!firstBlockedPerProcess.contains(pid)) {
+            firstBlockedPerProcess[pid] = action;
+        } else {
+            // Más de una acción bloqueada para el mismo proceso, la volvemos a bloquear
+            newBlockedQueue.enqueue(action);
+        }
+    }
+
+    // 2. Ejecutar las acciones bloqueadas priorizadas
+    QSet<QString> processesExecutedFromBlocked; // procesos que lograron ejecutar alguna acción bloqueada
+    for (auto it = firstBlockedPerProcess.begin(); it != firstBlockedPerProcess.end(); ++it) {
+        const Action& action = it.value();
+        const QString& pid = action.pid;
+        const QString& resource = action.resource;
+        const QString& operation = action.operation;
+        int index = processIndexByPid(pid);
+        if (index == -1) continue;
+
+        if (resourceMutexes.value(resource, true)) {
+            resourceMutexes[resource] = false; // recurso tomado
+            resourceOwners[resource] = pid;
+            drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation); // verde éxito
+            processesExecutedFromBlocked.insert(pid);
+        } else {
+            // No disponible, volvemos a bloquear la acción
+            newBlockedQueue.enqueue(action);
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+        }
+    }
+
+    // 3. Procesar las acciones actuales del ciclo
+    for (const Action& action : currentActions) {
+        const QString& pid = action.pid;
+        const QString& resource = action.resource;
+        const QString& operation = action.operation;
+        int index = processIndexByPid(pid);
+        if (index == -1) continue;
+
+        if (processesExecutedFromBlocked.contains(pid)) {
+            // Este proceso ya ejecutó una acción bloqueada, su acción actual la bloqueamos
+            newBlockedQueue.enqueue(action);
+            drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+        } else {
+            // Intentar ejecutar acción actual si recurso libre
+            if (resourceMutexes.value(resource, true)) {
+                resourceMutexes[resource] = false;
+                resourceOwners[resource] = pid;
+                drawAccessBar(pid, index, currentTime, QColor(100, 200, 100), operation); // verde éxito
+            } else {
+                newBlockedQueue.enqueue(action);
+                drawAccessBar(pid, index, currentTime, QColor(255, 100, 100), "WAITING"); // rojo bloqueo
+            }
+        }
+    }
+
+    // 4. Actualizar la cola de bloqueados con la nueva
+    blockedQueue = newBlockedQueue;
+
+    QStringList resourceStatusList;
+
+    for (auto it = resourceMutexes.begin(); it != resourceMutexes.end(); ++it) {
+        const QString& resource = it.key();
+        bool available = it.value();
+
+        QString status;
+        if (available) {
+            status = "LIBRE";
+        } else {
+            QString user = resourceOwners.value(resource, "?");
+            status = QString("→%1").arg(user);
+        }
+
+        resourceStatusList << QString("%1:%2").arg(resource).arg(status);
+    }
+
+    int totalResources = resourceMutexes.size();
+    int availableResources = 0;
+    for (auto available : resourceMutexes) {
+        if (available) availableResources++;
+    }
+    semaphoreStatusLabel->setPlainText(
+        QString("Recursos disponibles: %1/%2").arg(availableResources).arg(totalResources)
+    );
+
+    // 5. Liberar todos los recursos para el siguiente ciclo
+    for (auto& keyValue : resourceMutexes) {
+        keyValue = true;
+    }
+
+    
+
+    // 6. Actualizar etiqueta de procesos bloqueados (únicos)
+    QSet<QString> blockedPids;
+    for (const Action& a : blockedQueue) {
+        blockedPids.insert(a.pid);
+    }
+    blockedQueueLabel->setPlainText(
+        QString("Procesos bloqueados: %1").arg(blockedPids.size())
+    );
+
+    
+    resourceUsageLabel->setPlainText(resourceStatusList.join(" | "));
+
+    // 7. Incrementar tiempo y actualizar etiqueta
+    currentTime++;
+    currentTimeLabel->setPlainText(QString("Tiempo: %1").arg(currentTime));
+
+    bool noMoreActions = true;
+    for (const Action& action : actions) {
+        if (action.cycle >= currentTime) {
+            noMoreActions = false;
             break;
         }
-
-        bool hasPending = false;
-        for (const Action& a : actions) {
-            if (a.pid == p.pid && a.cycle >= currentTime) {
-                hasPending = true;
-                break;
-            }
-        }
-
-        if (hasPending) {
-            allDone = false;
-            break;
-        }
     }
 
-    if (currentTimeLabel) {
-        currentTimeLabel->setPlainText(QString("Current Time: %1").arg(currentTime));
-    }
+    bool noBlockedProcesses = blockedQueue.isEmpty();
 
-    if (resourceStatusLabel) {
-        if (currentMutexOwner.isEmpty()) {
-            resourceStatusLabel->setPlainText("Resource R1: Libre");
-        } else {
-            resourceStatusLabel->setPlainText(QString("Resource R1: Ocupado por %1").arg(currentMutexOwner));
-        }
+    if (noMoreActions && noBlockedProcesses) {
+        stopSimulation();
+        currentTimeLabel->setPlainText(currentTimeLabel->toPlainText() + " END");
+        semaphoreStatusLabel->setPlainText(
+        QString("Recursos disponibles: %1/%2").arg(totalResources).arg(totalResources)
+    );
     }
    
-
-    if (allDone) {
-        std::cout << "Todos los procesos terminaron. Deteniendo simulación." << std::endl;
-        stopSimulation();
-    }
-
-    currentTime++;
 }
+
 
 void MutexSynchronizer::stopSimulation() {
     simulationTimer->stop();

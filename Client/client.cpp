@@ -524,13 +524,10 @@ bool SimulatorClient::validateSyncDataMutex() {
         return false;
     }
 
-    // Validar que solo haya un recurso (mutex)
-    if (syncResourceList.size() != 1) {
-        QMessageBox::warning(this, "Error", "Para sincronización tipo mutex, debe haber exactamente un recurso.");
-        return false;
+    QSet<QString> validResources;
+    for (const Resource& r : syncResourceList) {
+        validResources.insert(r.name);
     }
-
-    QString expectedResource = syncResourceList[0].name;
 
     // Crear conjunto de pids válidos
     QSet<QString> validPIDs;
@@ -540,8 +537,8 @@ bool SimulatorClient::validateSyncDataMutex() {
 
     // Validar todas las acciones
     for (const Action& a : syncActionList) {
-        if (a.operation != "ADQUIRE" && a.operation != "RELEASE") {
-            QMessageBox::warning(this, "Error", QString("Acción inválida: '%1'. Solo se permite ADQUIRE o RELEASE.").arg(a.operation));
+        if (a.operation != "WRITE" && a.operation != "READ") {
+            QMessageBox::warning(this, "Error", QString("Acción inválida: '%1'. Solo se permite WRITE o READ.").arg(a.operation));
             return false;
         }
 
@@ -550,12 +547,18 @@ bool SimulatorClient::validateSyncDataMutex() {
             return false;
         }
 
-        if (a.resource != expectedResource) {
-            QMessageBox::warning(this, "Error", QString("La acción de '%1' usa un recurso no válido ('%2'). Debe ser '%3'.")
-                                 .arg(a.pid, a.resource, expectedResource));
+        if (!validResources.contains(a.resource)) {
+            QMessageBox::warning(this, "Error", QString("La acción de '%1' usa un recurso no válido ('%2').").arg(a.pid, a.resource));
             return false;
         }
     }
+
+    for (const Resource& r : syncResourceList) {
+        if (r.counter != 1) {
+            QMessageBox::warning(this, "Error", QString("El recurso '%1' debe tener un contador igual a 1 para sincronización tipo mutex.").arg(r.name));
+            return false;
+        }
+}
 
     return true;
 }
