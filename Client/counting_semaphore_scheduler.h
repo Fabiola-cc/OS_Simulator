@@ -5,29 +5,26 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QTimer>
-#include <QQueue>
 #include <QMap>
 #include <QString>
 #include <QColor>
-#include <QSet>
+#include <QLabel>
+#include <QListWidget>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QGroupBox>
+#include <QScrollArea>
+#include <QWidget>
+#include <QDebug>
 #include "structures.h"
-#include "semaforo_conteo.h"
 
 class CountingSemaphoreScheduler : public QObject {
     Q_OBJECT
 
 public:
-    // Enumeración para estados de procesos
-    enum ProcessState {
-        INACTIVE,           // Proceso aún no ha llegado
-        READY,              // En cola de listos
-        EXECUTING,          // Ejecutándose actualmente
-        BLOCKED,            // Bloqueado esperando semáforo
-        ACCESSING_RESOURCE  // Accediendo al recurso
-    };
-
     explicit CountingSemaphoreScheduler(QObject *parent = nullptr);
     void setupGanttChart(QGraphicsView *view);
+    void setupSidePanel(QWidget *parent);
     void setProcesses(const QList<Process> &newProcesses);
     void setResources(const QList<Resource> &newResources);
     void setActions(const QList<Action> &newActions);
@@ -41,68 +38,66 @@ private slots:
     void updateSimulation();
 
 private:
-    // Componentes gráficos principales
+    // Componentes gráficos
     QGraphicsScene *ganttScene;
     QGraphicsView *ganttView;
     QTimer *simulationTimer;
-
-    // Labels informativos específicos para conteo
+    
+    // Labels informativos del Gantt
     QGraphicsTextItem *currentTimeLabel;
-    QGraphicsTextItem *semaphoreStatusLabel;
-    QGraphicsTextItem *blockedQueueLabel;
-    QGraphicsTextItem *currentProcessLabel;
-    QGraphicsTextItem *resourceIndicatorLabel;
-
-    // Estado de la simulación
-    int currentTime;
-    Process currentProcess;
-    int currentProcessRemainingTime;
-    bool hasCurrentProcess;
-
+    QGraphicsTextItem *resourceStatusLabel;
+    QGraphicsTextItem *pendingActionsLabel;
+    
+    // Panel lateral - Componentes principales
+    QWidget *sidePanel;
+    QScrollArea *processScrollArea;
+    QWidget *processContainer;
+    QVBoxLayout *processContainerLayout;
+    QListWidget *resourceListWidget;
+    QLabel *semaphoreStatusLabel;
+    QLabel *currentTimeDisplayLabel;
+    
+    // Widgets individuales para cada proceso
+    QMap<QString, QWidget*> processWidgets;
+    QMap<QString, QLabel*> processLabels;
+    QMap<QString, QWidget*> pendingActionContainers;
+    QMap<QString, QVBoxLayout*> pendingActionLayouts;
+    
     // Datos de la simulación
     QList<Process> processes;
     QList<Resource> resources;
     QList<Action> actions;
-
-    // Colas de procesos
-    QQueue<Process> readyQueue;
-    QQueue<Process> blockedQueue;
-
-    // Mapas de seguimiento
-    QMap<QString, QColor> processColors;
-    QMap<QString, int> processExecutionTimes;
-    QMap<QString, int> processStartTimes;
-    QMap<QString, Semaphore> resourceSemaphores;
     
-    // Tracking específico para recursos de conteo
-    QMap<QString, int> processResourceUsage;  // Cuántos recursos usa cada proceso
-
-    // === MÉTODOS DE CONFIGURACIÓN VISUAL ===
+    // Estado de la simulación
+    int currentTime;
+    QMap<QString, QColor> processColors;
+    QMap<QString, int> resourceCounters; // Recursos disponibles por nombre
+    
+    // Gestión de acciones
+    QMap<QString, Action> pendingActions;        // Acciones pendientes por PID
+    QMap<QString, Action> currentCycleAccess;    // Accesos concedidos en el ciclo actual
+    QMap<QString, Action> currentCycleWaiting;   // Procesos esperando en el ciclo actual
+    
+    // Métodos privados principales
+    void assignProcessColors();
+    void initializeResources();
+    void processCurrentCycleActions();
+    void drawAllProcessStates();
+    void updateInformationLabels();
+    void updateSidePanel();
+    void createProcessWidgets();
+    void updateProcessPendingActions(const QString& pid);
+    QString getProcessCurrentState(const QString& pid);
+    QColor getProcessStateColor(const QString& state);
+    QString getProcessStateSymbol(const QString& state);
+    bool checkSimulationComplete();
+    
+    // Métodos de configuración de la interfaz
     void setupInformationPanel();
     void setupLegend();
     void setupProcessRows(int startY);
     void setupTimeGrid(int startY, int endY);
-
-    // === MÉTODOS DE VISUALIZACIÓN ===
-    void drawAllProcessStates();
-    void updateInformationLabels();
-    void updateResourceIndicator();
-    
-    // === MÉTODOS DE ESTADO ===
-    ProcessState getProcessState(const QString& pid);
-    QColor getStateColor(ProcessState state);
-    QString getStateSymbol(ProcessState state);
-    QString getStateName(ProcessState state);
-    int getResourcesUsedByProcess(const QString& pid);
-
-    // === MÉTODOS DE LÓGICA ===
-    void assignProcessColors();
-    void initializeResources();
-    void processActions();
-    void handleSemaphoreOperation(const Action &action);
-    void executeCurrentProcess();
     void calculateMetrics();
-    bool checkSimulationComplete();
 };
 
 #endif // COUNTING_SEMAPHORE_SCHEDULER_H
